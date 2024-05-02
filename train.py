@@ -31,8 +31,10 @@ def get_args():
     # parser.add_argument("--savepath", dest="savepath", type=str,
     #                     default=os.path.join(DIR_PATH, r"trained_models"))
 
+    # parser.add_argument("--trainfolder", dest="trainfolder", type=str,
+    #                     default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train") 
     parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train") 
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/MARLMOT_Testing/MOT15/train") 
     parser.add_argument("--savepath", dest="savepath", type=str,
                         default=os.path.join(DIR_PATH, r"trained_models"))
     args = parser.parse_args()
@@ -53,7 +55,7 @@ if __name__ == "__main__":
 
     # initialize PPO class with desired hyperparameters
     ppo = PPO(dataloader, TrainWorld, Net, 
-              epochs=100,       # total number of batch+training iterations was 1500
+              epochs=1,       # total number of batch+training iterations was 1500
               num_train_iters=6, # number of iterations to update policy weights
               lr=5e-5,           # learning rate for policy and critic wieghts
               gamma=0.95,        # discount factor
