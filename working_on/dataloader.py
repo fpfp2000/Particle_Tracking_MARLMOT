@@ -37,8 +37,9 @@ class TrackDataloader():
         # store current ground truth and detection folder name
         self.current_video = ""
 
-        self.track_cols = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "valid"]
-        self.detect_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"]
+        # self.track_cols = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "valid"] # gt orig
+        self.track_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "valid"] # gt new
+        self.detect_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # det
     
 
     def get_gt_tracks(self, data_folder):
@@ -84,6 +85,30 @@ class TrackDataloader():
 
         return detections
     
+########################################################################################## I MADE AN EDIT HERE
+    
+    def get_gt_data(self, data_folder):
+        """ Obtains ground truth Detections DataFrame from input train folder.
+            Ground Truth DataFrame contains all ground truth detection bounding boxes
+            and confidence score for every frame. Occluded objects are not included.
+            Inputs:
+                data_folder - train folder path
+            Outputs:
+                detections - Ground Truth Tracks DataFrame 
+            """
+        gt_data = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
+                                 usecols=[0,2,3,4,5,6], 
+                                 header=None)
+
+        gt_data.columns = self.track_cols
+
+        # scale confidence to 0-1
+        gt_data.conf = (gt_data.conf - gt_data.conf.min()) \
+                          / (gt_data.conf.max() - gt_data.conf.min())
+
+        return gt_data
+########################################################################################## I MADE AN EDIT HERE
+
 
     @staticmethod
     def get_frame_size(data_folder):
@@ -137,12 +162,13 @@ class TrackDataloader():
             ground_truth = None
 
         detections = self.get_gt_detections(data_folder)
+        gt_data = self.get_gt_data(data_folder)
         frame_size = self.get_frame_size(data_folder)
 
         # store current ground truth and video names 
         self.current_video = train_name
 
-        return ground_truth, detections, frame_size
+        return ground_truth, detections, gt_data, frame_size
     
     def __len__(self):
         return len(self.data_paths)
