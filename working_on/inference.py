@@ -102,8 +102,9 @@ if __name__ == "__main__":
     # set PPO actor to current actor/policy
     ppo.actor = policy
 
+########################################################################################## ADDED GT HERE
     # get inference data
-    _, detections, frame_size = dataloader.__getitem__(idx)
+    _, detections, gt_data, frame_size = dataloader.__getitem__(idx)
 
     # get paths to image frames
     frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
@@ -111,11 +112,13 @@ if __name__ == "__main__":
     # save all frames to make a video of the tracks
     video_frames = []
 
+########################################################################################## ADDED GT HERE
     # initialize world object to collect rollouts
     tracker = HungarianTracker(iou_threshold=iou_threshold, 
                                 min_age=min_age)
     world = TestWorld(tracker=tracker, 
                       detections=detections,
+                      gt_data=gt_data,
                       frame_size=frame_size)
 
     # take initial step to get first observations

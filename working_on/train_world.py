@@ -12,7 +12,7 @@ from track_utils import *
 
 class TrainWorld():
 
-    def __init__(self, tracker, ground_truth, detections, frame_size):
+    def __init__(self, tracker, ground_truth, detections, gt_data, frame_size):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -33,13 +33,17 @@ class TrainWorld():
                 missed_tracks - number of missed tracks
                 cost_penalty - cost penalty (1 - cost) --> lower is better
             """
+        
+########################################################################################## ADDED GT HERE
         self.tracker = tracker   # tracker class
         self.ground_truth = ground_truth # ground truth DataFrame
         self.detections = detections # DataFrame of detections for offline training
+        self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
 
         self.frame = 0 # current frame index
         self.current_tracks = {} # confirmed tracks
+        self.current_tracks_gt = {}
         self.truth_tracks = [] # current truth tracks
         self.truth_bboxes = [] # current truth bboxes
         self.id_map = {} # maps tracker IDs to ground truth IDs
@@ -85,20 +89,49 @@ class TrainWorld():
                           np.zeros((len(pt1), 1)), # category defaults to 0 for training
                           np.c_[detections.iloc[:, 5].to_numpy()]))
     
+########################################################################################## ADDED GT HERE
+    def _get_gt_bboxes(self, gt_data):
+        """ Obtains Detection bboxes and confidence 
+            Inputs:
+                detections - DataFrame of detections at current frame
+            Outputs:
+                detections - (Nx5) array of detections in the form of:
+                    (x1, y1, x2, y2, category, confidence)
+                    (left, top, right, bottom, category, confidence)
+            """
+        pt1 = gt_data.iloc[:, 1:3].to_numpy().astype(int)
+        pt2 = pt1 + gt_data.iloc[:, 3:5].to_numpy().round().astype(int)
+
+        return np.hstack((pt1, 
+                          pt2, 
+                          np.zeros((len(pt1), 1)), # category defaults to 0 for training
+                          np.c_[gt_data.iloc[:, 5].to_numpy()]))
+########################################################################################## ADDED GT HERE    
 
     def update_current_tracks(self):
         """ Update tracks for current frame """
+########################################################################################## ADDED GT HERE
 
         # get all detections at current frame
         detections = self.detections[self.detections.frame == self.frame]
+
+        gt_data = self.gt_data[self.gt_data.frame == self.frame]
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
         else:
             detections = np.empty((0, 6))
 
+
+        if not gt_data.empty:
+            gt_data = self._get_gt_bboxes(gt_data)
+        else:
+            gt_data = np.empty((0, 6))
+
         # update/associate current tracklets from tracker
         self.current_tracks = self.tracker.update(detections)
+        self.current_tracks_gt = self.tracker.update(gt_data)
+
 
         # get ground truth tracks
         self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
@@ -112,7 +145,10 @@ class TrainWorld():
 
         # get current track bbox for all tracks
         current_track_bboxes = [trk.get_state()[0].astype(int) 
-                                for trk in self.current_tracks]
+                                for trk in self.current_tracks and self.current_tracks_gt]
+        
+        # current_track_bboxes_gt = [trk.get_state()[0].astype(int) 
+        #                         for trk in self.current_tracks_gt]
         
         self._update_gt_bboxes()
         
@@ -120,7 +156,8 @@ class TrainWorld():
         self.false_positives, \
         self.missed_tracks, \
         _                = associate(self.truth_bboxes, 
-                                     current_track_bboxes, 
+                                     current_track_bboxes,
+                                    #  current_track_bboxes_gt, 
                                      thresh=0.3)
     
 
@@ -132,7 +169,9 @@ class TrainWorld():
         gt_ids = self.truth_tracks.id.iloc[self.matches[:, 0]].to_numpy()
 
         # get all track IDs (find more clean way to do this later)
-        track_ids = [track.id for track in np.array(self.current_tracks)[self.matches[:, 1]]]
+        track_ids = [track.id for track, gt_track in zip(self.current_tracks, self.current_tracks_gt[self.matches[:, 1]])]
+        # track_ids = [track.id for track in np.array(self.current_tracks) and np.array(self.current_tracks_gt)[self.matches[:, 1]]]
+        # track_ids_gt = [track.id for track in np.array(self.current_tracks_gt)[self.matches[:, 1]]]
 
         new_id_map = dict(zip(track_ids, gt_ids))
 
@@ -163,10 +202,18 @@ class TrainWorld():
 
         # get total age of current tracks
         curr_track_age = 0
+        curr_track_age_gt = 0
+
         for track in self.current_tracks:
             curr_track_age += track.age
+        
+        for track in self.current_tracks_gt:
+            curr_track_age_gt += track.age
 
+########################################################################################## ADDED GT HERE
         self.total_age_diff = abs(gt_track_age - curr_track_age)
+        self.total_age_diff_gt = abs(gt_track_age - curr_track_age_gt)
+
 
 
     def get_reward(self):
@@ -174,12 +221,14 @@ class TrainWorld():
 
         # compute cost penalty to enforce good bounding box predictions
         self.cost_penalty = sum([1 - track.observation[12] for track in self.current_tracks])
+        self.cost_penalty_gt = sum([1 - track.observation[12] for track in self.current_tracks_gt])
 
         # compute rewards
         reward = len(self.false_positives) \
                  + len(self.missed_tracks) \
                  + self.mismatch_errors \
-                 + self.cost_penalty # \
+                 + self.cost_penalty  \
+                 + self.cost_penalty_gt # \
                  # + self.total_age_diff
 
         return -reward
@@ -213,7 +262,7 @@ class TrainWorld():
         area_norm = self.frame_size[0]*self.frame_size[1] / 4
 
         observations = {}
-        for track in self.current_tracks:
+        for track in self.current_tracks and self.current_tracks_gt:
             obs = track.observation
 
             # normalize obsrvations
@@ -265,6 +314,10 @@ class TrainWorld():
             detection = convert_x_to_bbox(track.detection[0:4]).flatten()
             track.reset_kf(detection)
 
+########################################################################################## ADDED GT HERE
+            gt_data = convert_x_to_bbox(track.gt_data[0:4]).flatten()
+            track.reset_kf(gt_data)
+
             # set track to visible
             track.track_mode = 1
 
@@ -273,6 +326,10 @@ class TrainWorld():
             # perform update with new detection
             detection = convert_x_to_bbox(track.detection[0:4]).flatten()
             track.update(detection)
+
+########################################################################################## ADDED GT HERE
+            gt_data = convert_x_to_bbox(track.gt_data[0:4]).flatten()
+            track.update(gt_data)
 
             # set track to visible
             track.track_mode = 1
@@ -300,6 +357,7 @@ class TrainWorld():
                 actions - dict mapping current track id to discrete action
             """
         updated_tracks = []
+        updated_tracks_gt = []
 
         for i in range(len(self.tracker.tracks)):
             track = self.tracker.tracks[i]
@@ -312,6 +370,7 @@ class TrainWorld():
                 continue
 
         self.current_tracks = updated_tracks
+        self.current_tracks_gt = updated_tracks_gt
 
 
     def step(self, actions):
@@ -349,6 +408,7 @@ class TrainWorld():
         """ Resets everything """
         self.frame = 0 # current frame index
         self.current_tracks = {} # confirmed tracks
+        self.current_tracks_gt = {}
         self.truth_tracks = [] # current truth tracks
         self.truth_bboxes = [] # current truth bboxes
         self.id_map = {} # maps tracker IDs to ground truth IDs
@@ -358,6 +418,7 @@ class TrainWorld():
         self.missed_tracks =[]
         self.cost_penalty = 0
         self.total_age_diff = 0 # total age different between current and GT tracks
+        self.total_age_diff_gt = 0
 
         # ensure that the Tracker is reset
         self.tracker.reset()
@@ -369,7 +430,12 @@ class TrainWorld():
     def get_default_actions(self):
         """ Obtains default action of 2 for each current track """
         actions = {}
+        actions_gt = {}
+
         for track in self.current_tracks:
             actions.update({track.id : 2})
         
-        return actions 
+        for track in self.current_tracks_gt:
+            actions_gt.update({track.id : 2})
+        
+        return actions, actions_gt

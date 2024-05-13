@@ -37,8 +37,8 @@ class TrackDataloader():
         # store current ground truth and detection folder name
         self.current_video = ""
 
-        # self.track_cols = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "valid"] # gt orig
-        self.track_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "valid"] # gt new
+        self.track_cols_og = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "valid"] # gt orig
+        self.track_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # gt new replaced "valid" with "conf"
         self.detect_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # det
     
 
@@ -56,7 +56,7 @@ class TrackDataloader():
                                           usecols=[0,1,2,3,4,5,6], 
                                           header=None)
         # set default column names
-        ground_truth_tracks.columns = self.track_cols
+        ground_truth_tracks.columns = self.track_cols_og
 
         # remove invalid ground truth tracks 
         ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["valid"] == 1].drop(columns=["valid"])

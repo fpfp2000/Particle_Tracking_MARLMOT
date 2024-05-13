@@ -87,7 +87,8 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
     cost_penalties = 0
     total_num_tracks = 0
 
-    for (ground_truth, detections, frame_size) in dataloader:
+########################################################################################## MADE AN EDIT INSIDE FOR LOOP
+    for (ground_truth, detections, gt_data, frame_size) in dataloader:
         
         # initialize world object to collect rollouts
         tracker = HungarianTracker(iou_threshold=iou_threshold, 
@@ -95,6 +96,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
         world = TrainWorld(tracker=tracker, 
                            ground_truth=ground_truth, 
                            detections=detections,
+                           gt_data=gt_data,
                            frame_size=frame_size)
 
         # initialize episode rewards list

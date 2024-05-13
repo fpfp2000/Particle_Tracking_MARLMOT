@@ -8,7 +8,7 @@ from track_utils import *
 
 
 class TestWorld():
-    def __init__(self, tracker, detections, frame_size):
+    def __init__(self, tracker, detections, gt_data, frame_size):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -20,8 +20,10 @@ class TestWorld():
                 frame - current frame index
                 current_tracks - confirmed track dictions (id -> track object)
             """
+########################################################################################## ADDED GT HERE
         self.tracker = tracker   # tracker class
         self.detections = detections # DataFrame of detections for offline training
+        self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
 
         self.frame = 0 # current frame index
@@ -48,20 +50,49 @@ class TestWorld():
                           np.zeros((len(pt1), 1)), # category defaults to 0 for training
                           np.c_[detections.iloc[:, 5].to_numpy()]))
     
+########################################################################################## ADDED GT HERE
+    @staticmethod
+    def _get_gt_bboxes(gt_data):
+        """ Obtains Detection bboxes and confidence 
+            Inputs:
+                detections - DataFrame of detections at current frame
+            Outputs:
+                detections - (Nx5) array of detections in the form of:
+                    (x1, y1, x2, y2, category, confidence)
+                    (left, top, right, bottom, category, confidence)
+            """
+        pt1 = gt_data.iloc[:, 1:3].to_numpy().astype(int)
+        pt2 = pt1 + gt_data.iloc[:, 3:5].to_numpy().round().astype(int)
+
+        return np.hstack((pt1, 
+                          pt2, 
+                          np.zeros((len(pt1), 1)), # category defaults to 0 for training
+                          np.c_[gt_data.iloc[:, 5].to_numpy()]))
+ ########################################################################################## ADDED GT HERE   
 
     def update_current_tracks(self):
         """ Update tracks for current frame """
 
+########################################################################################## ADDED GT HERE
         # get all detections at current frame
         detections = self.detections[self.detections.frame == self.frame]
+        gt_data = self.gt_data[self.gt_data.frane == self.frame]
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
+            
         else:
             detections = np.empty((0, 6))
+        
+
+        if not gt_data.empty: 
+            gt_data = self._get_gt_bboxes(gt_data)
+        else: 
+            gt_data = np.empty((0, 6))
 
         # update/associate current tracklets from tracker
         self.current_tracks = self.tracker.update(detections)
+        self.current_tracks = self.tracker.update(gt_data)
         
         # increment frame number
         self.frame += 1
@@ -118,20 +149,28 @@ class TestWorld():
             # mark track to be deleted
             track.age = -1
 
+########################################################################################## ADDED GT HERE
         # restart track with detection (handles motion model failure)
         elif action == 1:
             # reset Kalman filter with new detection
             detection = convert_x_to_bbox(track.detection[0:4]).flatten()
             track.reset_kf(detection)
 
+            gt_data = convert_x_to_bbox(track.gt_data[0:4]).flatten()
+            track.reset_kf(gt_data)
+
             # set track to visible
             track.track_mode = 1
 
+########################################################################################## ADDED GT HERE
         # filter update with prediction and detection
         elif action == 2:
             # perform update with new detection
             detection = convert_x_to_bbox(track.detection[0:4]).flatten()
             track.update(detection)
+
+            gt_data = convert_x_to_bbox(track.gt_data[0:4]).flatten()
+            track.update(gt_data)
 
             # set track to visible
             track.track_mode = 1
@@ -199,7 +238,11 @@ class TestWorld():
 
         # subtract 1 since frame count is incremented in update_current_tracks
         # subtract 1 allows for final observations before batch loop exit
+    ########################################################################################## ADDED GT HERE
         if self.detections.frame.max() == (self.frame - 1):
+            done = True
+        
+        if self.gt_data.frame.max() == (self.frame - 1):
             done = True
 
         return observations,  done
