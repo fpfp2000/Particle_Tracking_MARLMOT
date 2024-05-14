@@ -110,7 +110,7 @@ class TrainWorld():
 
     def update_current_tracks(self):
         """ Update tracks for current frame """
-########################################################################################## ADDED GT HERE
+########################################################################################## ADDED GT IN HERE
 
         # get all detections at current frame
         detections = self.detections[self.detections.frame == self.frame]
@@ -121,7 +121,6 @@ class TrainWorld():
             detections = self._get_detection_bboxes(detections)
         else:
             detections = np.empty((0, 6))
-
 
         if not gt_data.empty:
             gt_data = self._get_gt_bboxes(gt_data)
