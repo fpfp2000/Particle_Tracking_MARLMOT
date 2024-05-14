@@ -170,6 +170,7 @@ class Obstacle():
 
         # most recent detection ([x, y, area, aspect ratio, conf, cost])
         self.detection = None 
+        self.gt_data = None
 
         self.time_since_update = 0 
         self.history = []
@@ -291,7 +292,7 @@ class HungarianTracker():
         Obstacle.count = 0
 
 
-    def update(self, detections=np.empty((0, 6))):
+    def update(self, detections=np.empty((0, 6)), gt_data=np.empty((0, 6))):
         """ Performs track update
             Inputs:
               detections - array of detections in the form of: [[x1,y1,x2,y2,cat,score],[x1,y1,x2,y2,cat,score],...]
@@ -312,6 +313,7 @@ class HungarianTracker():
         unmatched_tracks, \
         cost_matrix = associate(old_bboxes, 
                                 np.round(detections[:, :4]).astype(int), 
+                                # np.round(gt_data[:, :4]).astype(int),
                                 thresh=self.iou_threshold)
 
         # get associated tracks
@@ -320,8 +322,12 @@ class HungarianTracker():
             track = self.tracks[m[0]]
             cost = cost_matrix[m[0], m[1]]
             bbox = detections[m[1], :4]
+            bbox_gt = gt_data[m[1], :4]
             track.detection = np.vstack((convert_bbox_to_z(bbox), 
                                          detections[m[1], 5], # confidence score
+                                         cost))
+            track.gt_data = np.vstacl((convert_bbox_to_z(bbox_gt), 
+                                         gt_data[m[1], 5], # confidence score
                                          cost))
             tracks.append(self.tracks[m[0]])
 
@@ -329,20 +335,28 @@ class HungarianTracker():
         new_tracks = []
         for d in unmatched_detections:
             box = np.round(detections[d, :4]).astype(int)
+            box_gt = np.round(gt_data[d, :4]).astype(int)
             cat = detections[d, 4]
+            cat_gt = gt_data[d, 4]
             cost = 0
             track = Obstacle(box=box, cat=cat)
+            track_gt = Obstacle(box=box_gt, cat=cat_gt)
 
             track.detection = np.vstack((convert_bbox_to_z(detections[d, :4]), 
                                          detections[d, 5], # confidence score
                                          cost))
-            new_tracks.append(track)
+            track.gt_data = np.vstack((convert_bbox_to_z(gt_data[d, :4]), 
+                                         gt_data[d, 5], # confidence score
+                                         cost))
+            
+            new_tracks.append(track, track_gt)
 
         # get unmatched tracks
         unmatched_tracks = []
         for t in unmatched_tracks:
             track = self.tracks[t]
             track.detection = 0
+            track.gt_data = 0
             unmatched_tracks.append(track)
 
         # update tracks list with all tracks

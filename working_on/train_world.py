@@ -169,8 +169,9 @@ class TrainWorld():
         gt_ids = self.truth_tracks.id.iloc[self.matches[:, 0]].to_numpy()
 
         # get all track IDs (find more clean way to do this later)
-        track_ids = [track.id for track, gt_track in zip(self.current_tracks, self.current_tracks_gt[self.matches[:, 1]])]
         # track_ids = [track.id for track in np.array(self.current_tracks) and np.array(self.current_tracks_gt)[self.matches[:, 1]]]
+        track_ids = [track.id for track, match in zip(self.current_tracks, self.matches[:, 1]) if match]
+
         # track_ids_gt = [track.id for track in np.array(self.current_tracks_gt)[self.matches[:, 1]]]
 
         new_id_map = dict(zip(track_ids, gt_ids))
@@ -287,6 +288,7 @@ class TrainWorld():
         return observations
     
     @staticmethod
+########################################################################################## ADDED GT  IN HERE
     def take_action(track, action):
         """ Take action for a single observation vector 
 
@@ -314,7 +316,6 @@ class TrainWorld():
             detection = convert_x_to_bbox(track.detection[0:4]).flatten()
             track.reset_kf(detection)
 
-########################################################################################## ADDED GT HERE
             gt_data = convert_x_to_bbox(track.gt_data[0:4]).flatten()
             track.reset_kf(gt_data)
 
@@ -327,7 +328,6 @@ class TrainWorld():
             detection = convert_x_to_bbox(track.detection[0:4]).flatten()
             track.update(detection)
 
-########################################################################################## ADDED GT HERE
             gt_data = convert_x_to_bbox(track.gt_data[0:4]).flatten()
             track.update(gt_data)
 
