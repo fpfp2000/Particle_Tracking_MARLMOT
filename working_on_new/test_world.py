@@ -8,7 +8,7 @@ from track_utils import *
 
 
 class TestWorld():
-    def __init__(self, tracker, detections, frame_size):
+    def __init__(self, tracker, detections, gt_data, frame_size):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -22,6 +22,7 @@ class TestWorld():
             """
         self.tracker = tracker   # tracker class
         self.detections = detections # DataFrame of detections for offline training
+        self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
 
         self.frame = 0 # current frame index

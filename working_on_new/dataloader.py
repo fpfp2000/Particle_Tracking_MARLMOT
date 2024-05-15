@@ -103,8 +103,9 @@ class TrackDataloader():
         gt_data.columns = self.track_cols
 
         # scale confidence to 0-1
-        gt_data.conf = (gt_data.conf - gt_data.conf.min()) \
-                          / (gt_data.conf.max() - gt_data.conf.min())
+        gt_data.conf = 1
+        # (gt_data.conf - gt_data.conf.min()) \
+        #                   / (gt_data.conf.max() - gt_data.conf.min())
 
         return gt_data
 ########################################################################################## I MADE AN EDIT HERE
@@ -156,23 +157,13 @@ class TrackDataloader():
         data_folder = self.data_paths[idx]
         train_name = os.path.basename(data_folder)
 
-        # # Get the file names from the last part of the paths
-        # gt_file_name = os.path.basename(glob(os.path.join(data_folder, "gt/gt.txt"))[0])
-        # det_file_name = os.path.basename(glob(os.path.join(data_folder, "det/det.txt"))[0])
-
-        # # Print the names of the files being used
-        # print(f"Loading data from ground truth file: {gt_file_name}")
-        # print(f"Loading data from detection file: {det_file_name}")
-
         if self.mode == "train":
             ground_truth = self.get_gt_tracks(data_folder)
         else:
             ground_truth = None
 
         detections = self.get_gt_detections(data_folder)
-        print(f"Loading data from detection file: {data_folder}", detections)
         gt_data = self.get_gt_data(data_folder)
-        print(f"Det data from {data_folder}: ", gt_data)
         frame_size = self.get_frame_size(data_folder)
 
         # store current ground truth and video names 
