@@ -34,7 +34,7 @@ def get_args():
     # parser.add_argument("--trainfolder", dest="trainfolder", type=str,
     #                     default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train") 
     parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/working_on/MOT15/train") 
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/working_on_new/MOT15/train") 
     parser.add_argument("--savepath", dest="savepath", type=str,
                         default=os.path.join(DIR_PATH, r"trained_models"))
     args = parser.parse_args()

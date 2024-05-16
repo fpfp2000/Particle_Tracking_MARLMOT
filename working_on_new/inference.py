@@ -29,7 +29,7 @@ def get_args():
     parser.add_argument("--policy", dest="policy", type=str,
                         default=os.path.join(DIR_PATH, r"trained_models/actor_1161.pth"))
     parser.add_argument("--datafolder", dest="datafolder", type=str, 
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train")
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/working_on_new/MOT15/train")
     parser.add_argument("--savepath", dest="savepath", type=str,
                         default=os.path.join(DIR_PATH, "inference"))
     parser.add_argument("--idx", dest="idx", type=int, default=0)

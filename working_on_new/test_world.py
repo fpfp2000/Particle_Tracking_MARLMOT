@@ -49,20 +49,49 @@ class TestWorld():
                           np.zeros((len(pt1), 1)), # category defaults to 0 for training
                           np.c_[detections.iloc[:, 5].to_numpy()]))
     
+########################################################################################## I MADE AN EDIT HERE
+    @staticmethod
+    def _get_gt_bboxes(gt_data):
+        """ Obtains Detection bboxes and confidence 
+            Inputs:
+                detections - DataFrame of detections at current frame
+            Outputs:
+                detections - (Nx5) array of detections in the form of:
+                    (x1, y1, x2, y2, category, confidence)
+                    (left, top, right, bottom, category, confidence)
+            """
+        pt1 = gt_data.iloc[:, 1:3].to_numpy().astype(int)
+        pt2 = pt1 + gt_data.iloc[:, 3:5].to_numpy().round().astype(int)
+
+        return np.hstack((pt1, 
+                          pt2, 
+                          np.zeros((len(pt1), 1)), # category defaults to 0 for training
+                          np.c_[gt_data.iloc[:, 5].to_numpy()]))
+########################################################################################## I MADE AN EDIT HERE
+
 
     def update_current_tracks(self):
         """ Update tracks for current frame """
 
+########################################################################################## I MADE AN EDIT HERE
         # get all detections at current frame
         detections = self.detections[self.detections.frame == self.frame]
+        gt_data = self.gt_data[self.gt_data.frame == self.frame]
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
         else:
             detections = np.empty((0, 6))
 
+        if not gt_data.empty:
+            gt_data = self._get_gt_bboxes(gt_data)
+        else:
+            gt_data = np.empty((0, 6))
+
         # update/associate current tracklets from tracker
         self.current_tracks = self.tracker.update(detections)
+        # self.current_tracks = self.tracker.update(gt_data)
+########################################################################################## I MADE AN EDIT HERE
         
         # increment frame number
         self.frame += 1
