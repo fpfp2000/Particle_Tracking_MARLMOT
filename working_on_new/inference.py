@@ -110,7 +110,12 @@ if __name__ == "__main__":
     frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
 
     # save all frames to make a video of the tracks
-    video_frames = []
+    # video_frames = []
+
+########################################################################################## create directory to save frames
+    frames_dir = os.path.join(savepath, "frames")
+    os.makedirs(frames_dir, exist_ok=True)
+
 
 ########################################################################################## ADDED GT HERE
     # initialize world object to collect rollouts
@@ -123,40 +128,66 @@ if __name__ == "__main__":
 
     # take initial step to get first observations
     observations, _ = world.step({})
+
+########################################################################################## MADE CHANGES HERE
+
+frame_count = 0
+while True:    
+
+    frame_path = frame_paths[world.frame - 1]
+
+    actions, logprobs = ppo.get_actions(observations)
+    observations, done = world.step(actions)
+
+    # draw boxes on all tracks
+    frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                        cv2.COLOR_BGR2RGB), 
+                        world.current_tracks)
     
-    while True:    
+    # save frame as image
+    frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+    cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
-        frame_path = frame_paths[world.frame - 1]
+    frame_count += 1
 
-        actions, logprobs = ppo.get_actions(observations)
-        observations, done = world.step(actions)
+    if done:
+        break
 
-        # draw boxes on all tracks
-        frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                         cv2.COLOR_BGR2RGB), 
-                            world.current_tracks)
-        video_frames.append(frame)
+print(f"Frames saved to: {frames_dir}")
 
-        if done:
-            break
+    # while True:    
+
+    #     frame_path = frame_paths[world.frame - 1]
+
+    #     actions, logprobs = ppo.get_actions(observations)
+    #     observations, done = world.step(actions)
+
+    #     # draw boxes on all tracks
+    #     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+    #                                      cv2.COLOR_BGR2RGB), 
+    #                         world.current_tracks)
+    #     video_frames.append(frame)
+
+    #     if done:
+    #         break
 
 
-    if make_video:
-        video_path = os.path.join(savepath, 
-                                dataloader.current_video + "_tracks.mp4")
-        print(f"Saving video to: {video_path}")
+    # if make_video:
+    #     video_path = os.path.join(savepath, 
+    #                             dataloader.current_video + "_tracks.mp4")
+    #     print(f"Saving video to: {video_path}")
 
-        frame_rate = dataloader.get_frame_rate(dataloader.data_paths[idx])
+    #     frame_rate = dataloader.get_frame_rate(dataloader.data_paths[idx])
 
-        out = cv2.VideoWriter(video_path, 
-                              cv2.VideoWriter_fourcc(*'mp4v'), 
-                              frame_rate, 
-                              frame_size[::-1])
+    #     out = cv2.VideoWriter(video_path, 
+    #                           cv2.VideoWriter_fourcc(*'mp4v'), 
+    #                           frame_rate, 
+    #                           frame_size[::-1])
 
-        for frame in video_frames:
-            out.write(frame)
+    #     for frame in video_frames:
+    #         out.write(frame)
 
-        out.release()
-        del out
+    #     out.release()
+    #     del out
 
 
