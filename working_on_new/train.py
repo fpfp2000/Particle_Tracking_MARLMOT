@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # initialize PPO class with desired hyperparameters
     ppo = PPO(dataloader, TrainWorld, Net, 
-              epochs=1,       # total number of batch+training iterations was 1500
+              epochs=100,       # total number of batch+training iterations was 1500
               num_train_iters=6, # number of iterations to update policy weights
               lr=5e-5,           # learning rate for policy and critic wieghts
               gamma=0.95,        # discount factor

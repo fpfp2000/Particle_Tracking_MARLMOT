@@ -36,6 +36,7 @@ def get_args():
     parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
     parser.add_argument("--video", dest="video", type=bool, choices=[True, False], default=True)
+    parser.add_argument("--mode", dest="mode", type=str, choices=["train", "test"], default="train")
     parser.add_argument("--device", dest="device", type=str, choices=["cuda", "cpu"], default=r"cpu") 
     args = parser.parse_args()
 
@@ -83,10 +84,11 @@ if __name__ == "__main__":
     iou_threshold = args.iou_threshold
     min_age = args.min_age
     make_video = args.video
+    mode = args.mode
     device = args.device 
 
     # get dataloader
-    dataloader = TrackDataloader(datafolder, mode="train")
+    dataloader = TrackDataloader(datafolder, mode= mode)
 
     # get actor/policy
     policy = Net(input_dim=18, output_dim=5).to(device)
@@ -113,7 +115,7 @@ if __name__ == "__main__":
     # video_frames = []
 
 ########################################################################################## create directory to save frames
-    frames_dir = os.path.join(savepath, "frames")
+    frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
     os.makedirs(frames_dir, exist_ok=True)
 
 
