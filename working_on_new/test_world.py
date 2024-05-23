@@ -70,13 +70,14 @@ class TestWorld():
 ########################################################################################## I MADE AN EDIT HERE
 
 
-    def update_current_tracks(self):
+    def update_current_tracks(self, gt = False):
         """ Update tracks for current frame """
 
 ########################################################################################## I MADE AN EDIT HERE
         # get all detections at current frame
         detections = self.detections[self.detections.frame == self.frame]
         gt_data = self.gt_data[self.gt_data.frame == self.frame]
+
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
@@ -88,9 +89,17 @@ class TestWorld():
         else:
             gt_data = np.empty((0, 6))
 
+        if not gt_data.empty:
+            
+        else:
+            gt_data = np.empty((0, 6))
+
         # update/associate current tracklets from tracker
-        self.current_tracks = self.tracker.update(detections)
-        # self.current_tracks = self.tracker.update(gt_data)
+        # 
+        if gt == True:
+            self.current_tracks = self.tracker.update(gt_data)
+        else:
+            self.current_tracks = self.tracker.update(detections)
 ########################################################################################## I MADE AN EDIT HERE
         
         # increment frame number
@@ -202,6 +211,18 @@ class TestWorld():
 
         self.current_tracks = updated_tracks
 
+    def take_fake_actions(self, actions):
+        """ Take actions for all current tracks/observations
+            Inputs:
+                actions - dict mapping current track id to discrete action
+            """
+        updated_tracks = []
+
+        # takes current tracks from ground truth
+        # get_gt_tracks(current frame)
+
+        self.current_tracks = updated_tracks
+
 
     def step(self, actions):
         """ Generate observations and rewards for a single frame
@@ -234,6 +255,37 @@ class TestWorld():
 
         return observations,  done
     
+    def fake_step(self, actions):
+        """ Generate observations and rewards for a single frame
+            Inputs:
+                # actions - (Mx1 array) actions for previous observations
+                actions - length M dict that maps track ids to discrete actions for previous observations
+            Outputs:
+                # observations - (Nx18 array) array of (18x1) observation vectors
+                observations - length N dict that maps track ids to (18x1) observation vectors
+                # rewards - (Nx1) array of rewards
+                rewards - length N list of rewards
+                done - (Bool) indicates whether the current video is complete
+            """
+        # implement actions (updates current tracks)
+        if len(actions) > 0:
+            self.take_fake_actions(actions)
+
+        done = False
+
+        # get detections and update current tracks for each frame
+        self.update_current_tracks()
+
+        # get observations
+        observations = self.get_observations()
+
+        # subtract 1 since frame count is incremented in update_current_tracks
+        # subtract 1 allows for final observations before batch loop exit
+        if self.detections.frame.max() == (self.frame - 1):
+            done = True
+
+        return observations,  done
+
 
     def reset(self):
         """ Resets everything and returns an observation """
