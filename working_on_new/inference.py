@@ -103,10 +103,11 @@ if __name__ == "__main__":
               
     # set PPO actor to current actor/policy
     ppo.actor = policy
+    
 
 ########################################################################################## ADDED GT HERE
     # get inference data
-    _, detections, gt_data, frame_size = dataloader.__getitem__(idx)
+    _, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
     # get paths to image frames
     frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])

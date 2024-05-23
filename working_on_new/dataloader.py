@@ -37,7 +37,7 @@ class TrackDataloader():
         # store current ground truth and detection folder name
         self.current_video = ""
 
-        self.track_cols_og = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "valid"] # gt orig
+        self.track_cols_og = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "cof"] # gt orig repaced valid with conf 
         self.track_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # gt new replaced "valid" with "conf"
         self.detect_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # det
     
@@ -97,10 +97,10 @@ class TrackDataloader():
                 detections - Ground Truth Tracks DataFrame 
             """
         gt_data = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
-                                 usecols=[0,2,3,4,5,6], 
+                                 usecols=[0,1,2,3,4,5,6], 
                                  header=None)
 
-        gt_data.columns = self.track_cols
+        gt_data.columns = self.track_cols_og
 
         # scale confidence to 0-1
         gt_data.conf = 1
@@ -164,12 +164,13 @@ class TrackDataloader():
 
         detections = self.get_gt_detections(data_folder)
         gt_data = self.get_gt_data(data_folder)
+        gt_tracks = self.get_gt_tracks(data_folder)
         frame_size = self.get_frame_size(data_folder)
 
         # store current ground truth and video names 
         self.current_video = train_name
 
-        return ground_truth, detections, gt_data, frame_size
+        return ground_truth, detections, gt_data, gt_tracks, frame_size
     
     def __len__(self):
         return len(self.data_paths)

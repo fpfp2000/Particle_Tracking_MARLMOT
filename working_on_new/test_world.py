@@ -42,12 +42,12 @@ class TestWorld():
                     (left, top, right, bottom, category, confidence)
             """
         pt1 = detections.iloc[:, 1:3].to_numpy().astype(int)
-        pt2 = pt1 + detections.iloc[:, 3:5].to_numpy().round().astype(int)
+        pt2 = pt1 + detections.iloc[:, 3:6].to_numpy().round().astype(int)
 
         return np.hstack((pt1, 
                           pt2, 
                           np.zeros((len(pt1), 1)), # category defaults to 0 for training
-                          np.c_[detections.iloc[:, 5].to_numpy()]))
+                          np.c_[detections.iloc[:, 6].to_numpy()]))
     
 ########################################################################################## I MADE AN EDIT HERE
     @staticmethod
@@ -70,7 +70,7 @@ class TestWorld():
 ########################################################################################## I MADE AN EDIT HERE
 
 
-    def update_current_tracks(self):
+    def update_current_tracks(self, gt = False):
         """ Update tracks for current frame """
 
 ########################################################################################## I MADE AN EDIT HERE
@@ -89,8 +89,11 @@ class TestWorld():
             gt_data = np.empty((0, 6))
 
         # update/associate current tracklets from tracker
-        self.current_tracks = self.tracker.update(detections)
-        # self.current_tracks = self.tracker.update(gt_data)
+        if gt == True: 
+            self.current_tracks = self.tracker.update(gt_data)
+        else:
+            self.current_tracks = self.tracker.update(detections)
+        
 ########################################################################################## I MADE AN EDIT HERE
         
         # increment frame number
@@ -222,7 +225,7 @@ class TestWorld():
         done = False
 
         # get detections and update current tracks for each frame
-        self.update_current_tracks()
+        self.update_current_tracks(gt=True)
 
         # get observations
         observations = self.get_observations()
