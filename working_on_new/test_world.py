@@ -116,7 +116,7 @@ class TestWorld():
 
         # get ground truth tracks 
         # self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
-        self.truth_tracks = self.gt_data.loc[self.gt_data.frame == self.frame, :]
+        self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
         
         # increment frame number
         self.frame += 1
