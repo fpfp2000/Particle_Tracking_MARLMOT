@@ -98,10 +98,10 @@ class TrackDataloader():
                 detections - Ground Truth Tracks DataFrame 
             """
         gt_data = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
-                                 usecols=[0,1,2,3,4,5,6], 
+                                 usecols=[0,2,3,4,5,6], 
                                  header=None)
 
-        gt_data.columns = self.track_cols_gt_data
+        gt_data.columns = self.track_cols
 
         # scale confidence to 0-1
         gt_data.conf = 1
