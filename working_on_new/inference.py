@@ -97,8 +97,10 @@ if __name__ == "__main__":
     policy.eval();
 
     # get default PPO class
-    ppo = PPO(dataloader, TestWorld, Net, epochs=1, 
-              iou_threshold=iou_threshold, min_age=min_age, 
+    ppo = PPO(dataloader, TestWorld, Net, 
+              epochs=1, 
+              iou_threshold=iou_threshold, 
+              min_age=min_age, 
               device=device)
               
     # set PPO actor to current actor/policy
@@ -126,6 +128,7 @@ if __name__ == "__main__":
                                 min_age=min_age)
     world = TestWorld(tracker=tracker, 
                       detections=detections,
+                    #   ground_truth=ground_truth,
                       gt_data=gt_data,
                       frame_size=frame_size)
 

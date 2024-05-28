@@ -24,6 +24,11 @@ class TestWorld():
         self.detections = detections # DataFrame of detections for offline training
         self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
+        ########################################################################################## I MADE AN EDIT HERE
+        self.truth_tracks = [] # current truth tracks 
+        self.truth_bboxes = [] # current truth bboxes
+        # self.ground_truth = ground_truth # ground truth DataFrame
+        ########################################################################################## I MADE AN EDIT HERE
 
         self.frame = 0 # current frame index
         self.current_tracks = {} # confirmed tracks
@@ -42,13 +47,14 @@ class TestWorld():
                     (left, top, right, bottom, category, confidence)
             """
         pt1 = detections.iloc[:, 1:3].to_numpy().astype(int)
-        pt2 = pt1 + detections.iloc[:, 3:6].to_numpy().round().astype(int)
+        pt2 = pt1 + detections.iloc[:, 3:5].to_numpy().round().astype(int)
 
         return np.hstack((pt1, 
                           pt2, 
                           np.zeros((len(pt1), 1)), # category defaults to 0 for training
-                          np.c_[detections.iloc[:, 6].to_numpy()]))
+                          np.c_[detections.iloc[:, 5].to_numpy()]))
     
+
 ########################################################################################## I MADE AN EDIT HERE
     @staticmethod
     def _get_gt_bboxes(gt_data):
@@ -69,8 +75,22 @@ class TestWorld():
                           np.c_[gt_data.iloc[:, 5].to_numpy()]))
 ########################################################################################## I MADE AN EDIT HERE
 
+######################################################################################### I MADE AN EDIT HERE
+    def _update_gt_bboxes(self):
+        """ Update Ground Truth bboxes """
+        gt_bbox = []
+        # draw ground truth on frame
+        for id in self.truth_tracks.id:
+            track = self.truth_tracks[self.truth_tracks.id == id]
+            pt1 = track.iloc[0, 2:4].to_numpy().astype(int)
+            pt2 = pt1 + track.iloc[0, 4:6].to_numpy().round().astype(int)
+            gt_bbox.append([pt1[0], pt1[1], pt2[0], pt2[1]])
 
-    def update_current_tracks(self, gt = False):
+        # convert to array
+        self.truth_bboxes = np.array(gt_bbox)
+######################################################################################### I MADE AN EDIT HERE
+
+    def update_current_tracks(self, gt = True):
         """ Update tracks for current frame """
 
 ########################################################################################## I MADE AN EDIT HERE
@@ -89,15 +109,18 @@ class TestWorld():
             gt_data = np.empty((0, 6))
 
         # update/associate current tracklets from tracker
-        if gt == True: 
-            self.current_tracks = self.tracker.update(gt_data)
-        else:
+        if gt == False: 
             self.current_tracks = self.tracker.update(detections)
-        
-########################################################################################## I MADE AN EDIT HERE
+        else:
+            self.current_tracks = self.tracker.update(gt_data)
+
+        # get ground truth tracks 
+        # self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
+        self.truth_tracks = self.gt_data.loc[self.gt_data.frame == self.frame, :]
         
         # increment frame number
         self.frame += 1
+########################################################################################## I MADE AN EDIT HERE
 
 
     def get_observations(self):
@@ -230,6 +253,8 @@ class TestWorld():
         # get observations
         observations = self.get_observations()
 
+        # self._update_gt_bboxes()
+
         # subtract 1 since frame count is incremented in update_current_tracks
         # subtract 1 allows for final observations before batch loop exit
         if self.detections.frame.max() == (self.frame - 1):
@@ -242,6 +267,8 @@ class TestWorld():
         """ Resets everything and returns an observation """
         self.frame = 0 # current frame index
         self.current_tracks = {} # confirmed tracks
+        self.truth_bboxes = []
+        self.truth_tracks = []
 
         # ensure that the Tracker is reset
         self.tracker.reset()
