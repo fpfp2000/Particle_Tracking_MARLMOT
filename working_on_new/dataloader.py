@@ -6,6 +6,9 @@ import os
 from glob import glob
 import configparser
 import pandas as pd
+import re
+import math
+from pathlib import Path
 
 # custom dataloader for MOT Challenge data
 class TrackDataloader():
@@ -54,7 +57,7 @@ class TrackDataloader():
                 ground_truth_tracks - Ground Truth Tracks DataFrame 
             """
         ground_truth_tracks = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
-                                          usecols=[0,1,2,3,4,5,6], 
+                                          usecols=[0,1,2,3,4,5,6],
                                           header=None)
         # set default column names
         ground_truth_tracks.columns = self.track_cols_og
@@ -139,11 +142,23 @@ class TrackDataloader():
         config.read(os.path.join(data_folder, "seqinfo.ini"))
 
         return int(config.get("Sequence", "frameRate"))
-    
+
+########################################################################################## I MADE AN EDIT HERE
     @staticmethod
     def get_frame_paths(data_folder):
         """ Returns filepaths to image frames """
-        return glob(os.path.join(data_folder, "img1/*.jpg"))
+        files = glob(os.path.join(data_folder, "img1/*.jpg"))
+
+        file_pattern = re.compile(r'.*?(\d+).*?')
+
+        def get_order(file):
+            match = file_pattern.match(Path(file).name)
+            if not match:
+                return math.inf
+            return int(match.groups()[0])
+
+        sorted_files = sorted(files, key=get_order)
+        return sorted_files
 
 
     def __getitem__(self, idx):
