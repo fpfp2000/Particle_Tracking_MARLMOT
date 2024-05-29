@@ -31,7 +31,9 @@ def get_args():
     parser.add_argument("--datafolder", dest="datafolder", type=str, 
                         default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/working_on_new/MOT15/train")
     parser.add_argument("--savepath", dest="savepath", type=str,
-                        default=os.path.join(DIR_PATH, "inference"))
+                        default=os.path.join(DIR_PATH, r"inference/current_tracks"))
+    parser.add_argument("--savepath_2", dest="savepath_2", type=str,
+                        default=os.path.join(DIR_PATH, r"inference/truth_tracks"))
     parser.add_argument("--idx", dest="idx", type=int, default=0)
     parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
@@ -80,6 +82,7 @@ if __name__ == "__main__":
     policy_path = args.policy
     datafolder = args.datafolder
     savepath = args.savepath
+    savepath_2 = args.savepath_2
     idx = args.idx
     iou_threshold = args.iou_threshold
     min_age = args.min_age
@@ -121,6 +124,8 @@ if __name__ == "__main__":
     frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
     os.makedirs(frames_dir, exist_ok=True)
 
+    frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
+    os.makedirs(frames_dir_2, exist_ok=True)
 
 ########################################################################################## ADDED GT HERE
     # initialize world object to collect rollouts
@@ -150,16 +155,24 @@ while True:
                                         cv2.COLOR_BGR2RGB), 
                         world.current_tracks)
     
+    frame2 = draw_tracks(cv2.cvtColor(cv2.imread(frame_path),
+                                        cv2.COLOR_BGR2RGB),
+                        world.truth_tracks)
+    
     # save frame as image
     frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+    frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+
     cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
 
     frame_count += 1
 
     if done:
         break
 
-print(f"Frames saved to: {frames_dir}")
+print(f"Current Tracks frames saved to: {frames_dir}")
+print(f"Truth Tracks frames saved to: {frames_dir_2}")
 
     # while True:    
 
