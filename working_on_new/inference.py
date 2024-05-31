@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
 ########################################################################################## ADDED GT HERE
     # get inference data
-    _, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+    ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
     # get paths to image frames
     frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
@@ -133,8 +133,9 @@ if __name__ == "__main__":
                                 min_age=min_age)
     world = TestWorld(tracker=tracker, 
                       detections=detections,
-                    #   ground_truth=ground_truth,
+                      ground_truth=ground_truth,
                       gt_data=gt_data,
+                    #   gt_tracks=gt_tracks,
                       frame_size=frame_size)
 
     # take initial step to get first observations
@@ -152,12 +153,12 @@ while True:
 
     # draw boxes on all tracks
     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                        cv2.COLOR_BGR2RGB), 
-                        world.current_tracks)
+                                    cv2.COLOR_BGR2RGB), 
+                                    world.current_tracks)
     
     frame2 = draw_tracks(cv2.cvtColor(cv2.imread(frame_path),
-                                        cv2.COLOR_BGR2RGB),
-                        world.truth_tracks)
+                                    cv2.COLOR_BGR2RGB),
+                                    world.truth_tracks)
     
     # save frame as image
     frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")

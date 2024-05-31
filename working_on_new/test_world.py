@@ -8,7 +8,7 @@ from track_utils import *
 
 
 class TestWorld():
-    def __init__(self, tracker, detections, gt_data, frame_size):
+    def __init__(self, tracker, detections, gt_data, frame_size, ground_truth):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -27,7 +27,7 @@ class TestWorld():
         ########################################################################################## I MADE AN EDIT HERE
         self.truth_tracks = [] # current truth tracks 
         self.truth_bboxes = [] # current truth bboxes
-        # self.ground_truth = ground_truth # ground truth DataFrame
+        self.ground_truth = ground_truth # ground truth DataFrame
         ########################################################################################## I MADE AN EDIT HERE
 
         self.frame = 0 # current frame index
@@ -108,15 +108,23 @@ class TestWorld():
         else:
             gt_data = np.empty((0, 6))
 
+        # if not ground_truth.empty:
+        #     ground_truth = self._get_gt_bboxes(ground_truth)
+        # else:
+        #     ground_truth = np.empty((0, 6))
+
         # update/associate current tracklets from tracker
         if gt == False: 
             self.current_tracks = self.tracker.update(detections)
+            self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
         else:
             self.current_tracks = self.tracker.update(gt_data)
+            self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
+
 
         # get ground truth tracks 
-        # self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
-        self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
+        # self.truth_tracks = self.gt.loc[self.ground_truth.frame == self.frame, :]
+        # self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
         
         # increment frame number
         self.frame += 1
