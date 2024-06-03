@@ -31,7 +31,7 @@ class TestWorld():
         ########################################################################################## I MADE AN EDIT HERE
 
         self.frame = 0 # current frame index
-        self.current_tracks = {} # confirmed tracks
+        self.current_tracks = [] # confirmed tracks
 
         # ensure that the Tracker is reset
         self.tracker.reset()
@@ -116,15 +116,15 @@ class TestWorld():
         # update/associate current tracklets from tracker
         if gt == False: 
             self.current_tracks = self.tracker.update(detections)
-            self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
+            # self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
         else:
             self.current_tracks = self.tracker.update(gt_data)
-            self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
+            # self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
 
 
         # get ground truth tracks 
         # self.truth_tracks = self.gt.loc[self.ground_truth.frame == self.frame, :]
-        # self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
+        self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
         
         # increment frame number
         self.frame += 1
