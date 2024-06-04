@@ -108,10 +108,6 @@ class TestWorld():
         else:
             gt_data = np.empty((0, 6))
 
-        # if not ground_truth.empty:
-        #     ground_truth = self._get_gt_bboxes(ground_truth)
-        # else:
-        #     ground_truth = np.empty((0, 6))
 
         # update/associate current tracklets from tracker
         if gt == False: 
@@ -120,10 +116,9 @@ class TestWorld():
         else:
             self.current_tracks = self.tracker.update(gt_data)
             # self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
-
+    
 
         # get ground truth tracks 
-        # self.truth_tracks = self.gt.loc[self.ground_truth.frame == self.frame, :]
         self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
         
         # increment frame number

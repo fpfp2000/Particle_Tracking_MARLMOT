@@ -74,6 +74,34 @@ def draw_tracks(frame, tracks):
 
     return frame
 
+def draw_tracks_from_df(frame, tracks_df):
+    """ Draws bounding boxes on frame (doesn't make copy)
+        Inputs:
+            frame - current RGB video frame
+            tracks_df - dataframe 
+        Outputs: 
+            frame - original frame with drawn bboxes
+        """
+    for _, track in tracks_df.iterrows():
+
+        # default color is red 
+        color = (255, 0 ,0)
+
+        # draw bbox        
+        x1, y1 = int(track.bb_left), int(track.bb_top)
+        x2, y2 = x1 + int(track.bb_width), y1 + int(track.bb_height)
+
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+
+        # draw track info
+        # label = f"{track.id}_{track.age}"
+        label = f"ID: {track.id}"
+
+        frame = cv2.putText(frame, label, (x1 + 10, y1 + 10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, 
+                            color, thickness=2)
+
+    return frame
 
 if __name__ == "__main__":
 
@@ -151,12 +179,16 @@ while True:
     actions, logprobs = ppo.get_actions(observations)
     observations, done = world.step(actions)
 
+    print(f"current_tracks:{world.current_tracks}")
     # draw boxes on all tracks
     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
                                     cv2.COLOR_BGR2RGB), 
                                     world.current_tracks)
     
-    frame2 = draw_tracks(cv2.cvtColor(cv2.imread(frame_path),
+    
+    print(f"truth_tracks:{world.truth_tracks}")
+
+    frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
                                     cv2.COLOR_BGR2RGB),
                                     world.truth_tracks)
     
