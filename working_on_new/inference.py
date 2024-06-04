@@ -179,14 +179,11 @@ while True:
     actions, logprobs = ppo.get_actions(observations)
     observations, done = world.step(actions)
 
-    print(f"current_tracks:{world.current_tracks}")
     # draw boxes on all tracks
     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
                                     cv2.COLOR_BGR2RGB), 
                                     world.current_tracks)
     
-    
-    print(f"truth_tracks:{world.truth_tracks}")
 
     frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
                                     cv2.COLOR_BGR2RGB),
