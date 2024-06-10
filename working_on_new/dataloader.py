@@ -63,7 +63,7 @@ class TrackDataloader():
         ground_truth_tracks.columns = self.track_cols_og
 
         # remove invalid ground truth tracks 
-        ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["valid"] == 1].drop(columns=["valid"])
+        # ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["valid"] == 1].drop(columns=["valid"])
 
         return ground_truth_tracks
     

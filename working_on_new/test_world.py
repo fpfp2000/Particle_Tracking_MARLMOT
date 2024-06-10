@@ -112,10 +112,8 @@ class TestWorld():
         # update/associate current tracklets from tracker
         if gt == False: 
             self.current_tracks = self.tracker.update(detections)
-            # self.truth_tracks = self.detections.loc[self.detections.frame == self.frame, :]
         else:
             self.current_tracks = self.tracker.update(gt_data)
-            # self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
     
 
         # get ground truth tracks 
