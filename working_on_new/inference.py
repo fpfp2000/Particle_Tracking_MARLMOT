@@ -85,7 +85,7 @@ def draw_tracks_from_df(frame, tracks_df):
     for _, track in tracks_df.iterrows():
 
         # default color is red 
-        color = (255, 0 ,0)
+        color = (0, 0 ,255) if track.valid == 1 else (255, 0, 0) # red for valid == 1, blue if valid == 0
 
         # draw bbox        
         x1, y1 = int(track.bb_left), int(track.bb_top)
@@ -136,73 +136,101 @@ if __name__ == "__main__":
               
     # set PPO actor to current actor/policy
     ppo.actor = policy
-    
 
+########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
+
+    for subfolder in os.listdir(datafolder):
+
+        subfolder_path = os.path.join(datafolder, subfolder)
+
+        print(subfolder_path)
+
+        # for sub in os.listdir(subfolder_path):
+        #     subsubfolder_path = os.path.join(subfolder, sub)
+
+        if not os.path.isdir(subfolder_path):
+            continue
+        
+        print(f"Processing folder: {subfolder}")
+
+        # dataloader = TrackDataloader(subfolder_path, mode=mode)
+        # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
+
+        for idx in range(len(dataloader)):
+            print(f"Processing vide {idx + 1}/{len(datafolder)}")
 ########################################################################################## ADDED GT HERE
-    # get inference data
-    ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+            # get inference data
+            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
-    # get paths to image frames
-    frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
 
-    # save all frames to make a video of the tracks
-    # video_frames = []
+            if ground_truth is None or detections is None or gt_data is None:
+                print(f"Skipping video {idx + 1}: Data not loaded properly")
+                continue 
 
-########################################################################################## create directory to save frames
-    frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
-    os.makedirs(frames_dir, exist_ok=True)
+            print(f"Loaded data for video {idx + 1}")
 
-    frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
-    os.makedirs(frames_dir_2, exist_ok=True)
+            # get paths to image frames
+            frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
 
-########################################################################################## ADDED GT HERE
-    # initialize world object to collect rollouts
-    tracker = HungarianTracker(iou_threshold=iou_threshold, 
-                                min_age=min_age)
-    world = TestWorld(tracker=tracker, 
-                      detections=detections,
-                      ground_truth=ground_truth,
-                      gt_data=gt_data,
-                    #   gt_tracks=gt_tracks,
-                      frame_size=frame_size)
+            # save all frames to make a video of the tracks
+            # video_frames = []
 
-    # take initial step to get first observations
-    observations, _ = world.step({})
+        ########################################################################################## create directory to save frames
+            frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
+            os.makedirs(frames_dir, exist_ok=True)
 
-########################################################################################## MADE CHANGES HERE
+            frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
+            os.makedirs(frames_dir_2, exist_ok=True)
 
-frame_count = 0
-while True:    
+        ########################################################################################## ADDED GT HERE
+            # initialize world object to collect rollouts
+            tracker = HungarianTracker(iou_threshold=iou_threshold, 
+                                        min_age=min_age)
+            world = TestWorld(tracker=tracker, 
+                            detections=detections,
+                            ground_truth=ground_truth,
+                            gt_data=gt_data,
+                            #   gt_tracks=gt_tracks,
+                            frame_size=frame_size)
 
-    frame_path = frame_paths[world.frame - 1]
+            # take initial step to get first observations
+            observations, _ = world.step({})
 
-    actions, logprobs = ppo.get_actions(observations)
-    observations, done = world.step(actions)
+        ########################################################################################## MADE CHANGES HERE
 
-    # draw boxes on all tracks
-    frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                    cv2.COLOR_BGR2RGB), 
-                                    world.current_tracks)
-    
+        frame_count = 0
+        while True:    
 
-    frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
-                                    cv2.COLOR_BGR2RGB),
-                                    world.truth_tracks)
-    
-    # save frame as image
-    frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-    frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+            frame_path = frame_paths[world.frame - 1]
 
-    cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-    cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
+            actions, logprobs = ppo.get_actions(observations)
+            observations, done = world.step(actions)
 
-    frame_count += 1
+            # draw boxes on all tracks
+            frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                            cv2.COLOR_BGR2RGB), 
+                                            world.current_tracks)
+            
 
-    if done:
-        break
+            frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
+                                            cv2.COLOR_BGR2RGB),
+                                            world.truth_tracks)
+            
+            # save frame as image
+            frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+            frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
 
-print(f"Current Tracks frames saved to: {frames_dir}")
-print(f"Truth Tracks frames saved to: {frames_dir_2}")
+            cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
+
+            frame_count += 1
+
+            if done:
+                break
+        print(f"Processing of {dataloader.current_video} completed.")
+        print(f"Current Tracks frames saved to: {frames_dir}")
+        print(f"Truth Tracks frames saved to: {frames_dir_2}")
+    print("ALL VIDEOS PROCESSED")
 
     # while True:    
 

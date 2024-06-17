@@ -23,7 +23,6 @@ class TrackDataloader():
         self.mode = mode.lower()
         
         # get data
-        # train_names = next(iter(os.walk(datafolder)))[1]
 ########################################################################################## I MADE AN EDIT HERE
         try:
             train_names = next(os.walk(datafolder))[1]
@@ -36,6 +35,7 @@ class TrackDataloader():
         for name in train_names:
             self.data_paths.append(os.path.join(datafolder, name))
 
+        # print("Data paths:", self.data_paths)
 
         # store current ground truth and detection folder name
         self.current_video = ""
@@ -190,3 +190,4 @@ class TrackDataloader():
     
     def __len__(self):
         return len(self.data_paths)
+    
