@@ -227,12 +227,13 @@ if __name__ == "__main__":
                 frame_count += 1
 
                 if done:
-                    print("Reached end of video frames.")
+                    # print("Reached end of video frames.")
                     break
 
-            print(f"Processing of {subfolder} completed.")
-            print(f"Current Tracks frames saved to: {frames_dir}")
-            print(f"Truth Tracks frames saved to: {frames_dir_2}")
+            # print(f"Processing of {subfolder} completed.")
+            # print(f"Current Tracks frames saved to: {frames_dir}")
+            # print(f"Truth Tracks frames saved to: {frames_dir_2}")
+        
     print("ALL VIDEOS PROCESSED")
 ########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
 
