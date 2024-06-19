@@ -138,26 +138,25 @@ if __name__ == "__main__":
     ppo.actor = policy
 
 ########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
-
     for subfolder in os.listdir(datafolder):
 
         subfolder_path = os.path.join(datafolder, subfolder)
-
-        print(subfolder_path)
 
         # for sub in os.listdir(subfolder_path):
         #     subsubfolder_path = os.path.join(subfolder, sub)
 
         if not os.path.isdir(subfolder_path):
             continue
+
+        print(f"Processing folder: {subfolder_path}")
         
-        print(f"Processing folder: {subfolder}")
+        # print(f"Processing folder: {subfolder}")
 
         # dataloader = TrackDataloader(subfolder_path, mode=mode)
         # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
+        
 
         for idx in range(len(dataloader)):
-            print(f"Processing vide {idx + 1}/{len(datafolder)}")
 ########################################################################################## ADDED GT HERE
             # get inference data
             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
@@ -166,8 +165,6 @@ if __name__ == "__main__":
             if ground_truth is None or detections is None or gt_data is None:
                 print(f"Skipping video {idx + 1}: Data not loaded properly")
                 continue 
-
-            print(f"Loaded data for video {idx + 1}")
 
             # get paths to image frames
             frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
@@ -198,39 +195,49 @@ if __name__ == "__main__":
 
         ########################################################################################## MADE CHANGES HERE
 
-        frame_count = 0
-        while True:    
+            frame_count = 0
+            while True:    
 
-            frame_path = frame_paths[world.frame - 1]
+                if world.frame - 1 >= len(frame_paths):
+                    print(f"Frame index {world.frame - 1} out of bounds. Breaking the loop.")
+                    break
 
-            actions, logprobs = ppo.get_actions(observations)
-            observations, done = world.step(actions)
+                frame_path = frame_paths[world.frame - 1]
 
-            # draw boxes on all tracks
-            frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                            cv2.COLOR_BGR2RGB), 
-                                            world.current_tracks)
-            
+                actions, logprobs = ppo.get_actions(observations)
+                observations, done = world.step(actions)
 
-            frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
-                                            cv2.COLOR_BGR2RGB),
-                                            world.truth_tracks)
-            
-            # save frame as image
-            frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-            frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+                # draw boxes on all tracks
+                frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                                cv2.COLOR_BGR2RGB), 
+                                                world.current_tracks)
+                
 
-            cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-            cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
+                frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
+                                                cv2.COLOR_BGR2RGB),
+                                                world.truth_tracks)
+                
+                # save frame as image
+                frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+                frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
 
-            frame_count += 1
+                cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
 
-            if done:
-                break
-        print(f"Processing of {dataloader.current_video} completed.")
-        print(f"Current Tracks frames saved to: {frames_dir}")
-        print(f"Truth Tracks frames saved to: {frames_dir_2}")
+                frame_count += 1
+
+                if done:
+                    print("Reached end of video frames.")
+                    break
+
+            print(f"Processing of {subfolder} completed.")
+            print(f"Current Tracks frames saved to: {frames_dir}")
+            print(f"Truth Tracks frames saved to: {frames_dir_2}")
     print("ALL VIDEOS PROCESSED")
+########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
+
+
+
 
     # while True:    
 
