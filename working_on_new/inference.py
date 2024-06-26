@@ -9,6 +9,7 @@ import cv2
 import torch
 import matplotlib.pyplot as plt
 from test_world import TestWorld
+from train_world import TrainWorld
 from dataloader import TrackDataloader
 from network import Net
 from ppo import PPO
@@ -102,6 +103,7 @@ def draw_tracks_from_df(frame, tracks_df):
                             color, thickness=2)
 
     return frame
+   
 
 if __name__ == "__main__":
 
@@ -137,142 +139,197 @@ if __name__ == "__main__":
     # set PPO actor to current actor/policy
     ppo.actor = policy
 
-########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
-    for subfolder in os.listdir(datafolder):
+    ######################################## PPO FOR MARLMOT 
+    # print("Evaluating MARLMOT")
+    # ppo_marl = PPO(dataloader, TestWorld, Net, epochs=1, 
+    #           iou_threshold=iou_threshold, min_age=min_age, 
+    #           device=device)
+              
+    # # set PPO actor to current actor/policy
+    # ppo_marl.actor = policy
 
-        subfolder_path = os.path.join(datafolder, subfolder)
+    # # compute a single batch on all data
+    # print("Obtaining Batch rollouts...")
+    # batch_obs, _, _, _ = ppo_marl.batch_rollout()
 
-        # for sub in os.listdir(subfolder_path):
-        #     subsubfolder_path = os.path.join(subfolder, sub)
+    # print("batch length: ", len(batch_obs))
+    # print("action ratios: ", np.array(ppo.metrics["action_ratios"]).round(4).squeeze())
 
-        if not os.path.isdir(subfolder_path):
-            continue
+    ######################################## PPO FOR MARLMOT 
 
-        print(f"Processing folder: {subfolder_path}")
-        
-        # print(f"Processing folder: {subfolder}")
 
-        # dataloader = TrackDataloader(subfolder_path, mode=mode)
-        # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
-        
 
-        for idx in range(len(dataloader)):
+######################################################################################################### OLD CODE THAT ONLY GOES THRU ONE FOLDER
+
+        # get inference data
+    ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+
+    # get paths to image frames
+    frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
+
+    # save all frames to make a video of the tracks
+    # video_frames = []
+
+########################################################################################## create directory to save frames
+    frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
+    os.makedirs(frames_dir, exist_ok=True)
+
+    frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
+    os.makedirs(frames_dir_2, exist_ok=True)
+
 ########################################################################################## ADDED GT HERE
-            # get inference data
-            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+    # initialize world object to collect rollouts
+    tracker = HungarianTracker(iou_threshold=iou_threshold, 
+                                min_age=min_age)
+    world = TestWorld(tracker=tracker, 
+                      detections=detections,
+                      ground_truth=ground_truth,
+                      gt_data=gt_data,
+                      frame_size=frame_size)
 
+    # take initial step to get first observations
+    observations, _ = world.step({})
 
-            if ground_truth is None or detections is None or gt_data is None:
-                print(f"Skipping video {idx + 1}: Data not loaded properly")
-                continue 
+########################################################################################## MADE CHANGES HERE
 
-            # get paths to image frames
-            frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
+    frame_count = 0
+    while True:    
 
-            # save all frames to make a video of the tracks
-            # video_frames = []
+        frame_path = frame_paths[world.frame - 1]
 
-        ########################################################################################## create directory to save frames
-            frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
-            os.makedirs(frames_dir, exist_ok=True)
+        actions, logprobs = ppo.get_actions(observations)
+        # actions_marl, logprobs_marl = ppo_marl.get_actions(observations)
 
-            frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
-            os.makedirs(frames_dir_2, exist_ok=True)
+        observations, done = world.step(actions)
 
-        ########################################################################################## ADDED GT HERE
-            # initialize world object to collect rollouts
-            tracker = HungarianTracker(iou_threshold=iou_threshold, 
-                                        min_age=min_age)
-            world = TestWorld(tracker=tracker, 
-                            detections=detections,
-                            ground_truth=ground_truth,
-                            gt_data=gt_data,
-                            #   gt_tracks=gt_tracks,
-                            frame_size=frame_size)
-
-            # take initial step to get first observations
-            observations, _ = world.step({})
-
-        ########################################################################################## MADE CHANGES HERE
-
-            frame_count = 0
-            while True:    
-
-                if world.frame - 1 >= len(frame_paths):
-                    print(f"Frame index {world.frame - 1} out of bounds. Breaking the loop.")
-                    break
-
-                frame_path = frame_paths[world.frame - 1]
-
-                actions, logprobs = ppo.get_actions(observations)
-                observations, done = world.step(actions)
-
-                # draw boxes on all tracks
-                frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                                cv2.COLOR_BGR2RGB), 
-                                                world.current_tracks)
-                
-
-                frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
-                                                cv2.COLOR_BGR2RGB),
-                                                world.truth_tracks)
-                
-                # save frame as image
-                frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-                frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
-
-                cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
-
-                frame_count += 1
-
-                if done:
-                    # print("Reached end of video frames.")
-                    break
-
-            # print(f"Processing of {subfolder} completed.")
-            # print(f"Current Tracks frames saved to: {frames_dir}")
-            # print(f"Truth Tracks frames saved to: {frames_dir_2}")
+        # draw boxes on all tracks
+        frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                        cv2.COLOR_BGR2RGB), 
+                                        world.current_tracks)
         
-    print("ALL VIDEOS PROCESSED")
+
+        frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
+                                        cv2.COLOR_BGR2RGB),
+                                        world.truth_tracks)
+        
+        # save frame as image
+        frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+        frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+
+        cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
+
+        frame_count += 1
+
+        if done:
+            break
+
+    print(f"Current Tracks frames saved to: {frames_dir}")
+    print(f"Truth Tracks frames saved to: {frames_dir_2}")
+######################################################################################################### OLD CODE THAT ONLY GOES THRU ONE FOLDER
+
+
+
+
+# ########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
+#     for subfolder in os.listdir(datafolder):
+
+#         subfolder_path = os.path.join(datafolder, subfolder)
+
+#         # for sub in os.listdir(subfolder_path):
+#         #     subsubfolder_path = os.path.join(subfolder, sub)
+
+#         if not os.path.isdir(subfolder_path):
+#             continue
+
+#         print(f"Processing folder: {subfolder_path}")
+        
+#         # print(f"Processing folder: {subfolder}")
+
+#         # dataloader = TrackDataloader(subfolder_path, mode=mode)
+#         # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
+        
+
+#         for idx in range(len(dataloader)):
+# ########################################################################################## ADDED GT HERE
+#             # get inference data
+#             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+
+
+#             if ground_truth is None or detections is None or gt_data is None:
+#                 print(f"Skipping video {idx + 1}: Data not loaded properly")
+#                 continue 
+
+#             # get paths to image frames
+#             frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
+
+#             # save all frames to make a video of the tracks
+#             # video_frames = []
+
+#         ########################################################################################## create directory to save frames
+#             frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
+#             os.makedirs(frames_dir, exist_ok=True)
+
+#             frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
+#             os.makedirs(frames_dir_2, exist_ok=True)
+
+#         ########################################################################################## ADDED GT HERE
+#             # initialize world object to collect rollouts
+#             tracker = HungarianTracker(iou_threshold=iou_threshold, 
+#                                         min_age=min_age)
+#             world = TestWorld(tracker=tracker, 
+#                             detections=detections,
+#                             ground_truth=ground_truth,
+#                             gt_data=gt_data,
+#                             #   gt_tracks=gt_tracks,
+#                             frame_size=frame_size)
+
+#             # take initial step to get first observations
+#             observations, _ = world.step({})
+
+#         ########################################################################################## MADE CHANGES HERE
+
+#             frame_count = 0
+#             while True:    
+
+#                 if world.frame - 1 >= len(frame_paths):
+#                     print(f"Frame index {world.frame - 1} out of bounds. Breaking the loop.")
+#                     break
+
+#                 frame_path = frame_paths[world.frame - 1]
+
+#                 actions, logprobs = ppo.get_actions(observations)
+#                 observations, done = world.step(actions)
+
+#                 # draw boxes on all tracks
+#                 frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+#                                                 cv2.COLOR_BGR2RGB), 
+#                                                 world.current_tracks)
+                
+
+#                 frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
+#                                                 cv2.COLOR_BGR2RGB),
+#                                                 world.truth_tracks)
+                
+#                 # save frame as image
+#                 frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+#                 frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+
+#                 cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+#                 cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
+
+#                 frame_count += 1
+
+#                 if done:
+#                     # print("Reached end of video frames.")
+#                     break
+
+#             # print(f"Processing of {subfolder} completed.")
+#             # print(f"Current Tracks frames saved to: {frames_dir}")
+#             # print(f"Truth Tracks frames saved to: {frames_dir_2}")
+        
+#     print("ALL VIDEOS PROCESSED")
 ########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
 
-
-
-
-    # while True:    
-
-    #     frame_path = frame_paths[world.frame - 1]
-
-    #     actions, logprobs = ppo.get_actions(observations)
-    #     observations, done = world.step(actions)
-
-    #     # draw boxes on all tracks
-    #     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-    #                                      cv2.COLOR_BGR2RGB), 
-    #                         world.current_tracks)
-    #     video_frames.append(frame)
-
-    #     if done:
-    #         break
-
-
-    # if make_video:
-    #     video_path = os.path.join(savepath, 
-    #                             dataloader.current_video + "_tracks.mp4")
-    #     print(f"Saving video to: {video_path}")
-
-    #     frame_rate = dataloader.get_frame_rate(dataloader.data_paths[idx])
-
-    #     out = cv2.VideoWriter(video_path, 
-    #                           cv2.VideoWriter_fourcc(*'mp4v'), 
-    #                           frame_rate, 
-    #                           frame_size[::-1])
-
-    #     for frame in video_frames:
-    #         out.write(frame)
-
-    #     out.release()
-    #     del out
 
 
