@@ -253,7 +253,7 @@ class TestWorld():
 
         # get observations
         observations = self.get_observations()
-
+        rewards = {}
         # self._update_gt_bboxes()
 
         # subtract 1 since frame count is incremented in update_current_tracks
@@ -261,7 +261,7 @@ class TestWorld():
         if self.detections.frame.max() == (self.frame - 1):
             done = True
 
-        return observations,  done
+        return observations, rewards, done
     
 
     def reset(self):

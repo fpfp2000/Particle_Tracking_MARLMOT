@@ -35,6 +35,8 @@ def get_args():
                         default=os.path.join(DIR_PATH, r"inference/current_tracks"))
     parser.add_argument("--savepath_2", dest="savepath_2", type=str,
                         default=os.path.join(DIR_PATH, r"inference/truth_tracks"))
+    parser.add_argument("--savepath_SORT", dest="savepath_SORT", type=str,
+                        default=os.path.join(DIR_PATH, r"inference/SORT_tracks"))
     parser.add_argument("--idx", dest="idx", type=int, default=0)
     parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
@@ -44,6 +46,149 @@ def get_args():
     args = parser.parse_args()
 
     return args
+
+def get_sort_actions(observations):
+        """
+            Obtains actions and logprobs from current observations for SORT policy
+            i.e. action is always equal to 3
+            Inputs:
+                observations - (dict) maps track ids to (18x1) observation vectors
+                device - (str) device to use
+            Outputs:
+                actions - (dict) maps track ids to discrete actions for observations
+                logprobs -- (tesnor) log probabilities of each action
+        """
+        # handle initial frame where no observations are made
+        if len(observations) == 0:
+            return {}, []
+
+        # get default SORT action
+        actions = torch.ones((len(observations),)) * 3
+
+        # get logprob of each SORT action
+        logprobs = torch.ones_like(actions)
+
+        # map track IDs to actions
+        try:
+            actions = dict(zip(observations.keys(), 
+                               actions.cpu().numpy()))
+        except TypeError:
+            # handle case for length 1 observation
+            actions = dict(zip(observations.keys(), 
+                               [actions.cpu().numpy().tolist()]))
+            logprobs = logprobs.unsqueeze(0)
+        
+        return actions, logprobs
+
+
+def get_sort_rollout(dataloader, iou_threshold, min_age):
+    """ Shameless near copy of PPO code to compute SORT rollout """
+    batch_obs = []
+    batch_actions = []
+    batch_logprobs = []
+    batch_rewards = []
+
+    # store metrics
+    total_num_tracks = 0
+
+    frames = []
+
+########################################################################################## MADE AN EDIT INSIDE FOR LOOP
+    for (ground_truth, detections, gt_data, gt_tracks, frame_size) in dataloader:
+        
+        # initialize world object to collect rollouts
+        tracker = HungarianTracker(iou_threshold=iou_threshold, 
+                                   min_age=min_age)
+        world = TestWorld(tracker=tracker, 
+                           ground_truth=ground_truth, 
+                           detections=detections,
+                           gt_data=gt_data,
+                           frame_size=frame_size)
+
+        # initialize episode rewards list
+        ep_rewards = []
+
+        # accumulate total number of tracks
+        total_num_tracks += len(ground_truth)
+
+        # take initial step to get first observations
+        observations, rewards, done = world.step({})
+
+        # collect (S, A, R) trajectory for entire video
+        while True:    
+
+            # append observations first
+            batch_obs += list(observations.values())
+
+            # take actions
+            actions, logprobs = get_sort_actions(observations)
+            # get rewards and new observations
+            observations, rewards, done = world.step(actions)
+
+            # store actions and new rewards 
+            batch_rewards.append(rewards)
+            batch_actions += list(actions.values())
+            batch_logprobs += logprobs
+
+            # assume that tracks at each frame occur at the same time step
+            ep_rewards.append(rewards) 
+
+            # Draw SORT tracks on the current frame
+            frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[world.frame - 1]), cv2.COLOR_BGR2RGB), world.current_tracks)
+            frames.append(frame)
+
+            if done:
+                break
+
+    metrics = (len(batch_obs))
+
+    return metrics, frames
+
+
+def eval_sort(dataloader, iou_threshold, min_age):
+    """ Special function to evaluate the results of SORT on a given dataset """
+    print("Obtaining SORT batch rollouts...")
+
+    # batch_len, \
+    mota, frames = get_sort_rollout(dataloader, 
+                            iou_threshold, 
+                            min_age)
+    
+    # display metrics
+    # print("batch length: ", batch_len)
+    print("MOTA: ", mota)
+
+    # saving SORT frmes
+    frames_dir = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
+    os.makedirs(frames_dir, exist_ok=True)
+
+    for frame_count, frame in enumerate(frames):
+        frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+        cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    print(f"SORT Tracks frames saved to: {frames_dir}")
+
+
+def draw_sort_tracks(frame, tracks):
+    """ Draws SORT bounding boxes on frame (doesn't make copy)
+        Inputs:
+            frame - current RGB video frame
+            tracks - list of track object
+        Outputs: 
+            frame - original frame with drawn bboxes
+    """
+    for track in tracks:
+        color = (0, 255, 255)  # Yellow for SORT tracks
+
+        # draw bbox
+        x1, y1, x2, y2 = np.round(track.get_state()[0]).astype(int)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+
+        # draw track info
+        label = f"SORT_{track.id}_{track.age}"
+        frame = cv2.putText(frame, label, (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, thickness=2)
+
+    return frame
 
 def draw_tracks(frame, tracks):
     """ Draws bounding boxes on frame (doesn't make copy)
@@ -113,6 +258,7 @@ if __name__ == "__main__":
     datafolder = args.datafolder
     savepath = args.savepath
     savepath_2 = args.savepath_2
+    savepath_SORT = args.savepath_SORT
     idx = args.idx
     iou_threshold = args.iou_threshold
     min_age = args.min_age
@@ -139,36 +285,13 @@ if __name__ == "__main__":
     # set PPO actor to current actor/policy
     ppo.actor = policy
 
-    ######################################## PPO FOR MARLMOT 
-    # print("Evaluating MARLMOT")
-    # ppo_marl = PPO(dataloader, TestWorld, Net, epochs=1, 
-    #           iou_threshold=iou_threshold, min_age=min_age, 
-    #           device=device)
-              
-    # # set PPO actor to current actor/policy
-    # ppo_marl.actor = policy
-
-    # # compute a single batch on all data
-    # print("Obtaining Batch rollouts...")
-    # batch_obs, _, _, _ = ppo_marl.batch_rollout()
-
-    # print("batch length: ", len(batch_obs))
-    # print("action ratios: ", np.array(ppo.metrics["action_ratios"]).round(4).squeeze())
-
-    ######################################## PPO FOR MARLMOT 
-
-
 
 ######################################################################################################### OLD CODE THAT ONLY GOES THRU ONE FOLDER
-
         # get inference data
     ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
     # get paths to image frames
     frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
-
-    # save all frames to make a video of the tracks
-    # video_frames = []
 
 ########################################################################################## create directory to save frames
     frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
@@ -188,9 +311,12 @@ if __name__ == "__main__":
                       frame_size=frame_size)
 
     # take initial step to get first observations
-    observations, _ = world.step({})
+    observations, _, _ = world.step({})
 
-########################################################################################## MADE CHANGES HERE
+    print("Evaluating Sort")
+    eval_sort(dataloader, iou_threshold, min_age)
+
+########################################################################################## ADDING BOXES TO EACH FRAME 
 
     frame_count = 0
     while True:    
@@ -198,7 +324,6 @@ if __name__ == "__main__":
         frame_path = frame_paths[world.frame - 1]
 
         actions, logprobs = ppo.get_actions(observations)
-        # actions_marl, logprobs_marl = ppo_marl.get_actions(observations)
 
         observations, done = world.step(actions)
 
@@ -221,11 +346,16 @@ if __name__ == "__main__":
 
         frame_count += 1
 
+         # Evaluate and save SORT frames
+        sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
+        eval_sort(dataloader, iou_threshold, min_age, sort_savepath)
+
         if done:
             break
 
     print(f"Current Tracks frames saved to: {frames_dir}")
     print(f"Truth Tracks frames saved to: {frames_dir_2}")
+    print(f"SORT Tracks frames saved to: {sort_savepath}")
 ######################################################################################################### OLD CODE THAT ONLY GOES THRU ONE FOLDER
 
 
