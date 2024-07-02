@@ -8,7 +8,7 @@ from track_utils import *
 
 
 class TestWorld():
-    def __init__(self, tracker, detections, gt_data, frame_size, ground_truth):
+    def __init__(self, tracker, detections, gt_data, frame_size, ground_truth, frame_paths):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -25,6 +25,7 @@ class TestWorld():
         self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
         ########################################################################################## I MADE AN EDIT HERE
+        self.frame_paths = frame_paths
         self.truth_tracks = [] # current truth tracks 
         self.truth_bboxes = [] # current truth bboxes
         self.ground_truth = ground_truth # ground truth DataFrame

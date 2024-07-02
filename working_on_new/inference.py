@@ -81,7 +81,7 @@ def get_sort_actions(observations):
         return actions, logprobs
 
 
-def get_sort_rollout(dataloader, iou_threshold, min_age):
+def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     """ Shameless near copy of PPO code to compute SORT rollout """
     batch_obs = []
     batch_actions = []
@@ -103,9 +103,10 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
                            ground_truth=ground_truth, 
                            detections=detections,
                            gt_data=gt_data,
-                           frame_size=frame_size)
+                           frame_size=frame_size,
+                           frame_paths=frame_paths)
 
-        # initialize episode rewards list
+        # initialize episode rewards list 
         ep_rewards = []
 
         # accumulate total number of tracks
@@ -115,7 +116,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
         observations, rewards, done = world.step({})
 
         # collect (S, A, R) trajectory for entire video
-        while True:    
+        while not done:    
 
             # append observations first
             batch_obs += list(observations.values())
@@ -133,16 +134,21 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
             # assume that tracks at each frame occur at the same time step
             ep_rewards.append(rewards) 
 
+            # debug
+            # print(f"world.frame: {world.frame}, len(frame_paths): {len(world.frame_paths)}")
+
+            # Ensuring frames are within bounds
+            if world.frame - 1 < 0 or world.frame - 1 >= len(world.frame_paths):
+                print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
+                break
+
             # Draw SORT tracks on the current frame
             frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[world.frame - 1]), cv2.COLOR_BGR2RGB), world.current_tracks)
             frames.append(frame)
 
-            if done:
-                break
-
     metrics = (len(batch_obs))
 
-    return metrics, frames
+    return metrics, frames, done
 
 
 def eval_sort(dataloader, iou_threshold, min_age):
@@ -150,9 +156,10 @@ def eval_sort(dataloader, iou_threshold, min_age):
     print("Obtaining SORT batch rollouts...")
 
     # batch_len, \
-    mota, frames = get_sort_rollout(dataloader, 
+    mota, frames, done = get_sort_rollout(dataloader, 
                             iou_threshold, 
-                            min_age)
+                            min_age,
+                            frame_paths)
     
     # display metrics
     # print("batch length: ", batch_len)
@@ -167,6 +174,8 @@ def eval_sort(dataloader, iou_threshold, min_age):
         cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
     print(f"SORT Tracks frames saved to: {frames_dir}")
+
+    return mota, done
 
 
 def draw_sort_tracks(frame, tracks):
@@ -308,7 +317,8 @@ if __name__ == "__main__":
                       detections=detections,
                       ground_truth=ground_truth,
                       gt_data=gt_data,
-                      frame_size=frame_size)
+                      frame_size=frame_size,
+                      frame_paths=frame_paths)
 
     # take initial step to get first observations
     observations, _, _ = world.step({})
@@ -325,7 +335,7 @@ if __name__ == "__main__":
 
         actions, logprobs = ppo.get_actions(observations)
 
-        observations, done = world.step(actions)
+        observations, _, _ = world.step(actions)
 
         # draw boxes on all tracks
         frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
@@ -348,7 +358,7 @@ if __name__ == "__main__":
 
          # Evaluate and save SORT frames
         sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
-        eval_sort(dataloader, iou_threshold, min_age, sort_savepath)
+        mota, done = eval_sort(dataloader, iou_threshold, min_age)
 
         if done:
             break
