@@ -139,7 +139,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
 
             # Ensuring frames are within bounds
             if world.frame - 1 < 0 or world.frame - 1 >= len(world.frame_paths):
-                print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
+                # print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
                 break
 
             # Draw SORT tracks on the current frame
