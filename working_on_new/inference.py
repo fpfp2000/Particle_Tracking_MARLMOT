@@ -37,6 +37,13 @@ def get_args():
                         default=os.path.join(DIR_PATH, r"inference/truth_tracks"))
     parser.add_argument("--savepath_SORT", dest="savepath_SORT", type=str,
                         default=os.path.join(DIR_PATH, r"inference/SORT_tracks"))
+    # parser.add_argument("--savepath", dest="savepath", type=str,
+    #                     default=r"/Volumes/Intenso/Fernanda/Master Thesis/inference/current_tracks")
+    # parser.add_argument("--savepath_2", dest="savepath_2", type=str,
+    #                     default=r"/Volumes/Intenso/Fernanda/Master Thesis/inference/truth_tracks")
+    # parser.add_argument("--savepath_SORT", dest="savepath_SORT", type=str,
+    #                     default=r"/Volumes/Intenso/Fernanda/Master Thesis/inference/SORT_tracks")
+    
     parser.add_argument("--idx", dest="idx", type=int, default=0)
     parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
@@ -295,125 +302,125 @@ if __name__ == "__main__":
     ppo.actor = policy
 
 ########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
-    for subfolder in os.listdir(datafolder):
+    # for subfolder in os.listdir(datafolder):
 
-        subfolder_path = os.path.join(datafolder, subfolder)
+    #     subfolder_path = os.path.join(datafolder, subfolder)
 
-        # for sub in os.listdir(subfolder_path):
-        #     subsubfolder_path = os.path.join(subfolder, sub)
+    #     # for sub in os.listdir(subfolder_path):
+    #     #     subsubfolder_path = os.path.join(subfolder, sub)
 
-        if not os.path.isdir(subfolder_path):
-            continue
+    #     if not os.path.isdir(subfolder_path):
+    #         continue
 
-        print(f"Processing folder: {subfolder_path}")
+    #     print(f"Processing folder: {subfolder_path}")
     
-        # dataloader = TrackDataloader(subfolder_path, mode=mode)
-        # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
+    #     # dataloader = TrackDataloader(subfolder_path, mode=mode)
+    #     # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
         
 
-        for idx in range(len(dataloader)):
+    for idx in range(len(dataloader)):
 ########################################################################################## ADDED GT HERE
-            # get inference data
-            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+        # get inference data
+        ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
 
-            if ground_truth is None or detections is None or gt_data is None:
-                print(f"Skipping video {idx + 1}: Data not loaded properly")
-                continue 
+        if ground_truth is None or detections is None or gt_data is None:
+            print(f"Skipping video {idx + 1}: Data not loaded properly")
+            continue 
 
-            # get paths to image frames
-            frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
+        # get paths to image frames
+        frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
 
-            # save all frames to make a video of the tracks
-            # video_frames = []
+        # save all frames to make a video of the tracks
+        # video_frames = []
 
-        ########################################################################################## create directory to save frames
-            frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
-            os.makedirs(frames_dir, exist_ok=True)
+    ########################################################################################## create directory to save frames
+        frames_dir = os.path.join(savepath, dataloader.current_video + "_frames")
+        os.makedirs(frames_dir, exist_ok=True)
 
-            frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
-            os.makedirs(frames_dir_2, exist_ok=True)
+        frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
+        os.makedirs(frames_dir_2, exist_ok=True)
 
-            frames_dir_3 = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
-            os.makedirs(frames_dir_3, exist_ok=True)
+        frames_dir_3 = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
+        os.makedirs(frames_dir_3, exist_ok=True)
 
-        ########################################################################################## ADDED GT HERE
-            # initialize world object to collect rollouts
-            tracker = HungarianTracker(iou_threshold=iou_threshold, 
-                                        min_age=min_age)
-            world = TestWorld(tracker=tracker, 
-                            detections=detections,
-                            ground_truth=ground_truth,
-                            gt_data=gt_data,
-                            #   gt_tracks=gt_tracks,
-                            frame_size=frame_size,
-                            frame_paths=frame_paths)
+    ########################################################################################## ADDED GT HERE
+        # initialize world object to collect rollouts
+        tracker = HungarianTracker(iou_threshold=iou_threshold, 
+                                    min_age=min_age)
+        world = TestWorld(tracker=tracker, 
+                        detections=detections,
+                        ground_truth=ground_truth,
+                        gt_data=gt_data,
+                        #   gt_tracks=gt_tracks,
+                        frame_size=frame_size,
+                        frame_paths=frame_paths)
 
-            # take initial step to get first observations
-            observations, _, _ = world.step({})
+        # take initial step to get first observations
+        observations, _, _ = world.step({})
 
-            # eval_sort(dataloader, iou_threshold, min_age)
+        # eval_sort(dataloader, iou_threshold, min_age)
+        # sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
+        mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+
+    ########################################################################################## MADE CHANGES HERE
+
+        frame_count = 0
+        done = False
+        while not done:    
+
+            # print(f"Processing frame {frame_count} in folder {subfolder}")
+
+            if world.frame - 1 >= len(frame_paths):
+                print(f"Frame index {world.frame - 1} out of bounds. Breaking the loop.")
+                break
+
+            frame_path = frame_paths[world.frame - 1]
+
+            actions, logprobs = ppo.get_actions(observations)
+            
+            observations, _, _ = world.step(actions)
+
+            # draw boxes on all tracks
+            frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                            cv2.COLOR_BGR2RGB), 
+                                            world.current_tracks)
+            
+
+            frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
+                                            cv2.COLOR_BGR2RGB),
+                                            world.truth_tracks)
+            
+            ######################################################################################
+            frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
+                                            cv2.COLOR_BGR2RGB),
+                                            world.current_tracks)
+            ######################################################################################
+            
+            # save frame as image
+            frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+            frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+            frame_filename_3 = os.path.join(frames_dir_3, f"frame_{frame_count:04d}.png")
+
+            cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(frame_filename_3, cv2.cvtColor(frame3, cv2.COLOR_RGB2BGR))
+
+            frame_count += 1
+
             # sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
-            mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+            # mota, done = eval_sort(dataloader, iou_threshold, min_age)
 
-        ########################################################################################## MADE CHANGES HERE
+            if done:
+                print("Reached end of video frames.")
+                break
 
-            frame_count = 0
-            done = False
-            while not done:    
-
-                # print(f"Processing frame {frame_count} in folder {subfolder}")
-
-                if world.frame - 1 >= len(frame_paths):
-                    print(f"Frame index {world.frame - 1} out of bounds. Breaking the loop.")
-                    break
-
-                frame_path = frame_paths[world.frame - 1]
-
-                actions, logprobs = ppo.get_actions(observations)
-                
-                observations, _, _ = world.step(actions)
-
-                # draw boxes on all tracks
-                frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                                cv2.COLOR_BGR2RGB), 
-                                                world.current_tracks)
-                
-
-                frame2 = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path),
-                                                cv2.COLOR_BGR2RGB),
-                                                world.truth_tracks)
-                
-                ######################################################################################
-                frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
-                                                cv2.COLOR_BGR2RGB),
-                                                world.current_tracks)
-                ######################################################################################
-                
-                # save frame as image
-                frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-                frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
-                frame_filename_3 = os.path.join(frames_dir_3, f"frame_{frame_count:04d}.png")
-
-                cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
-                cv2.imwrite(frame_filename_3, cv2.cvtColor(frame3, cv2.COLOR_RGB2BGR))
-
-                frame_count += 1
-
-                # sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
-                # mota, done = eval_sort(dataloader, iou_threshold, min_age)
-
-                if done:
-                    print("Reached end of video frames.")
-                    break
-
-            # print(f"Processing of {subfolder} completed.")
-            print(f"Current Tracks frames saved to: {frames_dir}")
-            print(f"Truth Tracks frames saved to: {frames_dir_2}")
-            print(f"SORT Tracks frames saved to: {frames_dir_3}")
-        
-    print("ALL VIDEOS PROCESSED")
+        # print(f"Processing of {subfolder} completed.")
+        print(f"Current Tracks frames saved to: {frames_dir}")
+        print(f"Truth Tracks frames saved to: {frames_dir_2}")
+        print(f"SORT Tracks frames saved to: {frames_dir_3}")
+    
+print("ALL VIDEOS PROCESSED")
 ######################################################################################### CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
 
 
