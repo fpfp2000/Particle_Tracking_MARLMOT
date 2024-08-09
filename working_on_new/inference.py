@@ -133,6 +133,12 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
             # get rewards and new observations
             observations, rewards, done = world.step(actions)
 
+            # get metrics
+            num_false_positives += len(world.false_positives)
+            num_false_negatives += len(world.missed_tracks)
+            num_mismatch_errrors += world.mismatch_errors
+            cost_penalties += world.cost_penalty
+
             # store actions and new rewards 
             batch_rewards.append(rewards)
             batch_actions += list(actions.values())
@@ -152,8 +158,17 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
             # Draw SORT tracks on the current frame
             frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[world.frame - 1]), cv2.COLOR_BGR2RGB), world.current_tracks)
             frames.append(frame)
+    
+    mota = 1 - ((num_false_positives 
+                     + num_false_negatives 
+                     + num_mismatch_errrors)) / total_num_tracks
 
-    metrics = (len(batch_obs))
+    metrics = (len(batch_obs), 
+               num_false_positives, 
+               num_false_negatives, 
+               num_mismatch_errrors, 
+               cost_penalties,
+               mota)
 
     return metrics, frames, done
 
@@ -162,14 +177,26 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     """ Special function to evaluate the results of SORT on a given dataset """
     print("Obtaining SORT batch rollouts...")
 
-    # batch_len, \
+    batch_len, \
+    false_positives, \
+    false_negatives, \
+    mismatch_errrors, \
+    cost_penalty, \
     mota, frames, done = get_sort_rollout(dataloader, 
                             iou_threshold, 
                             min_age,
                             frame_paths)
     
     # display metrics
-    # print("batch length: ", batch_len)
+    print("batch length: ", batch_len)
+    print("false positives: ", false_positives)
+    print("false negatives: ", false_negatives)
+    print("mismatch errrors: ", mismatch_errrors)
+    print("cost penalty: ", cost_penalty.round(4).squeeze())
+    print("total: ", false_positives 
+                     + false_negatives 
+                     + mismatch_errrors 
+                     + cost_penalty.round(4).squeeze())
     print("MOTA: ", mota)
 
     # saving SORT frmes
@@ -300,6 +327,31 @@ if __name__ == "__main__":
               
     # set PPO actor to current actor/policy
     ppo.actor = policy
+
+    # compute a single batch on all data
+    print("Obtaining Batch rollouts...")
+    batch_obs, _, _, _ = ppo.batch_rollout()
+
+    # print("Metrics after batch rollout:", ppo.metrics)
+
+    # display metrics
+    false_positives = ppo.metrics["false_positives"][0]
+    false_negatives = ppo.metrics["false_negatives"][0]
+    mismatch_errrors = ppo.metrics["mismatch_errrors"][0]
+    cost_penalty = ppo.metrics["cost_penalty"][0].round(4).squeeze()
+    mota = ppo.metrics["mota"][0]
+
+    # print("batch length: ", len(batch_obs))
+    print("action ratios: ", np.array(ppo.metrics["action_ratios"]).round(4).squeeze())
+    print("false positives: ", false_positives)
+    print("false negatives: ", false_negatives)
+    print("mismatch errrors: ", mismatch_errrors)
+    print("cost penalty: ", cost_penalty)
+    print("total: ", false_positives 
+                     + false_negatives 
+                     + mismatch_errrors 
+                     + cost_penalty)
+    print("MOTA: ", mota)
 
 ########################################################################################## CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
     # for subfolder in os.listdir(datafolder):

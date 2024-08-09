@@ -224,7 +224,7 @@ class PPO():
         cost_penalties = 0
         total_num_tracks = 0 # total number of gt tracks for all frames
 
-        for (ground_truth, detections, gt_data, gt_tracks, frame_size) in self.dataloader:
+        for (ground_truth, detections, gt_data, frame_size, frame_path) in self.dataloader:
             
             # initialize world object to collect rollouts
             tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
@@ -234,7 +234,9 @@ class PPO():
                              detections=detections,
                              gt_data=gt_data,
                             #  gt_tracks=gt_tracks,
-                             frame_size=frame_size)
+                             frame_size=frame_size,
+                            #  frame_path=frame_path
+                            )
 
             # initialize episode rewards list
             ep_rewards = []
