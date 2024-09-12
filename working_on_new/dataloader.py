@@ -12,7 +12,7 @@ from pathlib import Path
 
 # custom dataloader for MOT Challenge data
 class TrackDataloader():
-    def __init__(self, datafolder, mode="train", nrows=500):
+    def __init__(self, datafolder, mode="train", nrows=1000):
         """ Custom dataloader for MOT Challenge data
             detection_paths is assumed to always contain matching
             paths for each truth path.
@@ -131,6 +131,10 @@ class TrackDataloader():
         config.read(os.path.join(data_folder, "seqinfo.ini"))
         frame_size = (int(config.get("Sequence", "imHeight")), # num rows 
                       int(config.get("Sequence", "imWidth")))  # num cols
+        
+        print(f"get_frame_size returning frame_size: {frame_size} of type {type(frame_size)}")
+
+
         return frame_size
     
 
@@ -189,6 +193,8 @@ class TrackDataloader():
 
         # store current ground truth and video names 
         self.current_video = train_name
+
+        print(f"__getitem__ frame_size: {frame_size} of type {type(frame_size)}")
 
         return ground_truth, detections, gt_data, gt_tracks, frame_size
     

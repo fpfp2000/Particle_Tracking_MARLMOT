@@ -23,13 +23,22 @@ class TestWorld():
         self.tracker = tracker   # tracker class
         self.detections = detections # DataFrame of detections for offline training
         self.gt_data = gt_data
+        # print(f"Before assignment in TestWorld, frame_size is: {frame_size} of type {type(frame_size)}")
         self.frame_size = frame_size # frame size (num_rows, num_cols)
+        # print(f"After assignment in TestWorld, self.frame_size is: {self.frame_size} of type {type(self.frame_size)}")
         ########################################################################################## I MADE AN EDIT HERE
         self.frame_paths = frame_paths
         self.truth_tracks = [] # current truth tracks 
         self.truth_bboxes = [] # current truth bboxes
         self.ground_truth = ground_truth # ground truth DataFrame
+        self.mismatch_errors = 0 # number of current mismatch errors
+        self.matches = []
+        self.false_positives = []
+        self.missed_tracks = []
+        self.cost_penalty = 0
         ########################################################################################## I MADE AN EDIT HERE
+        print(f"Initializing TestWorld with frame_size of type: {type(self.frame_size)}")
+
 
         self.frame = 0 # current frame index
         self.current_tracks = [] # confirmed tracks
@@ -125,27 +134,156 @@ class TestWorld():
 ########################################################################################## I MADE AN EDIT HERE
 
 
+
+
+
+    def associate_gt(self):
+        """ Associate Current Tracks to Ground Truth Tracks """
+
+        # get current track bbox for all tracks
+        current_track_bboxes = [trk.get_state()[0].astype(int) 
+                                for trk in self.current_tracks]
+        
+        self._update_gt_bboxes()
+        
+        self.matches, \
+        self.false_positives, \
+        self.missed_tracks, \
+        _                = associate(self.truth_bboxes, 
+                                     current_track_bboxes, 
+                                     thresh=0.3)
+    
+
+    def _get_mismatch_errors(self):
+        """ Updates ID map and mismatch errors """
+        self.mismatch_errors = 0
+
+        # ground truth IDs
+        gt_ids = self.truth_tracks.id.iloc[self.matches[:, 0]].to_numpy()
+
+        # get all track IDs (find more clean way to do this later)
+        track_ids = [track.id for track in np.array(self.current_tracks)[self.matches[:, 1]]]
+
+        new_id_map = dict(zip(track_ids, gt_ids))
+
+        # check if any new track has had an ID switch
+        for id_ in new_id_map.keys():
+            # if ID was previously tracked and it's corresponding ground truth ID changed
+            if (id_ in self.id_map.keys()) and (new_id_map[id_] != self.id_map[id_]):
+                self.mismatch_errors += 1
+
+            # update id map
+            self.id_map = new_id_map
+
+
+    def update_age_diff(self):
+        """ Update total age difference for matched tracks only
+            We already penelize the agent for missing tracks and 
+            getting false positives
+            """
+        # reset total age diff
+        self.total_age_diff = 0
+
+        # get total age of ground truth tracks
+        gt_track_age = 0
+        frame_idx = self.ground_truth.frame <= self.frame
+        for gt_id in self.id_map.values():
+            id_idx = self.ground_truth.id == gt_id
+            gt_track_age += sum(frame_idx & id_idx)
+
+        # get total age of current tracks
+        curr_track_age = 0
+        for track in self.current_tracks:
+            curr_track_age += track.age
+
+        self.total_age_diff = abs(gt_track_age - curr_track_age)
+
+
+    def get_reward(self):
+        """ Environment Callback for Computing the rewards """
+
+        # compute cost penalty to enforce good bounding box predictions
+        self.cost_penalty = sum([1 - track.observation[12] for track in self.current_tracks])
+
+        # compute rewards
+        reward = len(self.false_positives) \
+                 + len(self.missed_tracks) \
+                 + self.mismatch_errors \
+                 + self.cost_penalty # \
+                 # + self.total_age_diff
+
+        return -reward
+    
+    
+
+    def iterate_frame(self):
+        """ obtains state/observations at the next frame """
+
+        # get detections and update current tracks for each frame
+        self.update_current_tracks()
+
+        # associate tracks with Ground Truth
+        self.associate_gt()
+
+        # get ID map and mismatch errors
+        # compute number of mismatch errors and update age diff
+        if len(self.matches) > 1:
+            self._get_mismatch_errors()
+            # self.update_age_diff()
+        else:
+            self.mismatch_errors = self.truth_bboxes.shape[0]
+            # self.total_age_diff = 0
+
+
+
+
+
+
+
+
+
+
+
+
     def get_observations(self):
         """ Obtains a vector of all observations for the
             current frame
             """
+
         # area normalization parameter
-        area_norm = self.frame_size[0]*self.frame_size[1] / 4
+        frame_width = self.frame_size[1]
+        frame_height = self.frame_size[0]
+        
+        area_norm = frame_width * frame_height / 4
+
+        # area normalization parameter
+        # area_norm = self.frame_size[0]*self.frame_size[1] / 4
 
         observations = {}
         for track in self.current_tracks:
             obs = track.observation
 
-             # normalize obsrvations
-            obs[0] /= self.frame_size[1] # xpos
-            obs[1] /= self.frame_size[0] # ypos
-            obs[2] /= area_norm # area
-            obs[4] = sigmoid(obs[4] / self.frame_size[1]) # xvel
-            obs[5] = sigmoid(obs[5] / self.frame_size[0]) # yvel
-            obs[6] = sigmoid(obs[6] / area_norm) # area vel
+            # normalize obsrvations
+            # obs[0] /= self.frame_size["bb_width"].max() # xpos
+            # obs[1] /= self.frame_size["bb_height"].max() # ypos
+            # obs[2] /= area_norm # area
+            # obs[4] = sigmoid(obs[4] / self.frame_size["bb_width"].max()) # xvel
+            # obs[5] = sigmoid(obs[5] / self.frame_size["bb_height"].max()) # yvel
+            # obs[6] = sigmoid(obs[6] / area_norm) # area vel
 
-            obs[7]  /= self.frame_size[1] # detected xpos
-            obs[9]  /= area_norm # detected area
+            # obs[7]  /= self.frame_size["bb_width"].max() # detected xpos
+            # obs[9]  /= area_norm # detected area
+
+            # Normalize using bounding box data from ground_truth or detections
+            obs[0] /= self.ground_truth["bb_width"].max()  # Normalize xpos using bounding box width
+            obs[1] /= self.ground_truth["bb_height"].max()  # Normalize ypos using bounding box height
+            obs[2] /= area_norm  # Normalize area using frame area
+            obs[4] = sigmoid(obs[4] / self.ground_truth["bb_width"].max())  # Normalize xvel
+            obs[5] = sigmoid(obs[5] / self.ground_truth["bb_height"].max())  # Normalize yvel
+            obs[6] = sigmoid(obs[6] / area_norm)  # Normalize area velocity
+
+            obs[7] /= self.ground_truth["bb_width"].max()  # Normalize detected xpos
+            obs[9] /= area_norm  # Normalize detected area
 
             # normalize between 0-1
             obs[16] = sigmoid(obs[16] - 3) # frames since last association
@@ -271,6 +409,12 @@ class TestWorld():
         self.current_tracks = {} # confirmed tracks
         self.truth_bboxes = []
         self.truth_tracks = []
+
+        self.mismatch_errors = 0 # number of current mismatch errors
+        self.matches = []
+        self.false_positives = []
+        self.missed_tracks =[]
+        self.cost_penalty = 0
 
         # ensure that the Tracker is reset
         self.tracker.reset()

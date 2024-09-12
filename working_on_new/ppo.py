@@ -224,8 +224,14 @@ class PPO():
         cost_penalties = 0
         total_num_tracks = 0 # total number of gt tracks for all frames
 
-        for (ground_truth, detections, gt_data, frame_size, frame_path) in self.dataloader:
+        for (ground_truth, detections, gt_data, frame_size, frame_paths) in self.dataloader:
             
+            if not isinstance(frame_size, tuple):
+                print(f"Warning: frame_size is expected to be a tuple but got {type(frame_size)}. Fixing it.")
+                frame_size = (frame_size["bb_height"].max(), frame_size["bb_width"].max())
+
+            # print(f"batch_rollout frame_size: {frame_size} of type {type(frame_size)}")
+
             # initialize world object to collect rollouts
             tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
                                        min_age=self.min_age)
@@ -235,8 +241,9 @@ class PPO():
                              gt_data=gt_data,
                             #  gt_tracks=gt_tracks,
                              frame_size=frame_size,
-                            #  frame_path=frame_path
+                             frame_paths=frame_paths
                             )
+            # print(f"After TestWorld initialization in batch_rollout, frame_size is: {world.frame_size} of type {type(world.frame_size)}")
 
             # initialize episode rewards list
             ep_rewards = []

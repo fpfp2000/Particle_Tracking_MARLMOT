@@ -96,6 +96,10 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     batch_rewards = []
 
     # store metrics
+    num_false_positives = 0
+    num_false_negatives = 0
+    num_mismatch_errrors = 0
+    cost_penalties = 0
     total_num_tracks = 0
 
     frames = []
@@ -106,6 +110,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
         # initialize world object to collect rollouts
         tracker = HungarianTracker(iou_threshold=iou_threshold, 
                                    min_age=min_age)
+        
         world = TestWorld(tracker=tracker, 
                            ground_truth=ground_truth, 
                            detections=detections,
@@ -177,26 +182,31 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     """ Special function to evaluate the results of SORT on a given dataset """
     print("Obtaining SORT batch rollouts...")
 
+    metrics, frames, done = get_sort_rollout(dataloader, 
+                            iou_threshold, 
+                            min_age,
+                            frame_paths)
+    
     batch_len, \
     false_positives, \
     false_negatives, \
     mismatch_errrors, \
     cost_penalty, \
-    mota, frames, done = get_sort_rollout(dataloader, 
-                            iou_threshold, 
-                            min_age,
-                            frame_paths)
+    mota = metrics
     
     # display metrics
     print("batch length: ", batch_len)
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)
     print("mismatch errrors: ", mismatch_errrors)
-    print("cost penalty: ", cost_penalty.round(4).squeeze())
+    # print("cost penalty: ", cost_penalty.round(4).squeeze())
+    print("cost penalty: ", cost_penalty)
     print("total: ", false_positives 
                      + false_negatives 
                      + mismatch_errrors 
-                     + cost_penalty.round(4).squeeze())
+                     + cost_penalty )
+                    #  + cost_penalty.round(4).squeeze())
+
     print("MOTA: ", mota)
 
     # saving SORT frmes
@@ -338,7 +348,7 @@ if __name__ == "__main__":
     false_positives = ppo.metrics["false_positives"][0]
     false_negatives = ppo.metrics["false_negatives"][0]
     mismatch_errrors = ppo.metrics["mismatch_errrors"][0]
-    cost_penalty = ppo.metrics["cost_penalty"][0].round(4).squeeze()
+    cost_penalty = round(float(ppo.metrics["cost_penalty"][0]), 4)
     mota = ppo.metrics["mota"][0]
 
     # print("batch length: ", len(batch_obs))
@@ -375,10 +385,14 @@ if __name__ == "__main__":
         # get inference data
         ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
+        print(f"Before TestWorld initialization, frame_size is: {frame_size} of type {type(frame_size)}")
+
+        frame_size = dataloader.get_frame_size(dataloader.data_paths[idx])
 
         if ground_truth is None or detections is None or gt_data is None:
             print(f"Skipping video {idx + 1}: Data not loaded properly")
             continue 
+
 
         # get paths to image frames
         frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
@@ -407,6 +421,8 @@ if __name__ == "__main__":
                         #   gt_tracks=gt_tracks,
                         frame_size=frame_size,
                         frame_paths=frame_paths)
+
+        print(f"After TestWorld initialization, frame_size is still: {frame_size} of type {type(frame_size)}")
 
         # take initial step to get first observations
         observations, _, _ = world.step({})
