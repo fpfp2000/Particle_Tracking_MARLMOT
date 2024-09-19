@@ -37,7 +37,7 @@ class TestWorld():
         self.missed_tracks = []
         self.cost_penalty = 0
         ########################################################################################## I MADE AN EDIT HERE
-        print(f"Initializing TestWorld with frame_size of type: {type(self.frame_size)}")
+        # print(f"Initializing TestWorld with frame_size of type: {type(self.frame_size)}")
 
 
         self.frame = 0 # current frame index

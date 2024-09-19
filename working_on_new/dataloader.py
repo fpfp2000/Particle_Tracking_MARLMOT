@@ -60,7 +60,8 @@ class TrackDataloader():
         ground_truth_tracks = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
                                           usecols=[0,1,2,3,4,5,6],
                                           header=None,
-                                          nrows=self.nrows)
+                                        #   nrows=self.nrows
+                                        )
         # set default column names
         ground_truth_tracks.columns = self.track_cols_og
 
@@ -82,7 +83,8 @@ class TrackDataloader():
         detections = pd.read_csv(os.path.join(data_folder, "det/det.txt"), 
                                  usecols=[0,2,3,4,5,6], 
                                  header=None,
-                                 nrows=self.nrows)
+                                #  nrows=self.nrows
+                                )
 
         detections.columns = self.detect_cols
 
@@ -106,7 +108,8 @@ class TrackDataloader():
         gt_data = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
                                  usecols=[0,2,3,4,5,6], 
                                  header=None,
-                                 nrows=self.nrows)
+                                #  nrows=self.nrows
+                                 )
 
         gt_data.columns = self.track_cols
 
@@ -132,7 +135,7 @@ class TrackDataloader():
         frame_size = (int(config.get("Sequence", "imHeight")), # num rows 
                       int(config.get("Sequence", "imWidth")))  # num cols
         
-        print(f"get_frame_size returning frame_size: {frame_size} of type {type(frame_size)}")
+        # print(f"get_frame_size returning frame_size: {frame_size} of type {type(frame_size)}")
 
 
         return frame_size
@@ -194,7 +197,7 @@ class TrackDataloader():
         # store current ground truth and video names 
         self.current_video = train_name
 
-        print(f"__getitem__ frame_size: {frame_size} of type {type(frame_size)}")
+        # print(f"__getitem__ frame_size: {frame_size} of type {type(frame_size)}")
 
         return ground_truth, detections, gt_data, gt_tracks, frame_size
     
