@@ -98,7 +98,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     # store metrics
     num_false_positives = 0
     num_false_negatives = 0
-    num_mismatch_errrors = 0
+    num_mismatch_errors = 0
     cost_penalties = 0
     total_num_tracks = 0
 
@@ -141,7 +141,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
             # get metrics
             num_false_positives += len(world.false_positives)
             num_false_negatives += len(world.missed_tracks)
-            num_mismatch_errrors += world.mismatch_errors
+            num_mismatch_errors += world.mismatch_errors
             cost_penalties += world.cost_penalty
 
             # store actions and new rewards 
@@ -166,12 +166,12 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     
     mota = 1 - ((num_false_positives 
                      + num_false_negatives 
-                     + num_mismatch_errrors)) / total_num_tracks
+                     + num_mismatch_errors)) / total_num_tracks
 
     metrics = (len(batch_obs), 
                num_false_positives, 
                num_false_negatives, 
-               num_mismatch_errrors, 
+               num_mismatch_errors, 
                cost_penalties,
                mota)
 
@@ -190,20 +190,33 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     batch_len, \
     false_positives, \
     false_negatives, \
-    mismatch_errrors, \
+    mismatch_errors, \
     cost_penalty, \
     mota = metrics
-    
+
+    for detection, truth in zip(detections, ground_truth):
+        if detection is None and truth is not None:
+            false_negatives += 1  # Missed ground truth
+            print(f"Missed detection: False negatives = {false_negatives}")
+        elif detection is not None and truth is None:
+            false_positives += 1  # Extra detection without a ground truth
+            print(f"Extra detection: False positives = {false_positives}")
+        elif detection is not None and truth is not None:
+            if detection != truth:  # Mismatch (wrong association)
+                mismatch_errors += 1
+                print(f"Mismatch: Mismatch errors = {mismatch_errors}")
+
+
     # display metrics
     print("batch length: ", batch_len)
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)
-    print("mismatch errrors: ", mismatch_errrors)
+    print("mismatch errrors: ", mismatch_errors)
     # print("cost penalty: ", cost_penalty.round(4).squeeze())
     print("cost penalty: ", cost_penalty)
     print("total: ", false_positives 
                      + false_negatives 
-                     + mismatch_errrors 
+                     + mismatch_errors 
                      + cost_penalty )
                     #  + cost_penalty.round(4).squeeze())
 
@@ -223,7 +236,7 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
         'mota': mota,
         'false_positives': false_positives,
         'false_negatives': false_negatives,
-        'mismatch_errors': mismatch_errrors,
+        'mismatch_errors': mismatch_errors,
         'cost_penalty': cost_penalty
     }, done
 # mota, done
@@ -354,7 +367,7 @@ if __name__ == "__main__":
     # display metrics
     false_positives = ppo.metrics["false_positives"][0]
     false_negatives = ppo.metrics["false_negatives"][0]
-    mismatch_errrors = ppo.metrics["mismatch_errrors"][0]
+    mismatch_errors = ppo.metrics["mismatch_errors"][0]
     cost_penalty = round(float(ppo.metrics["cost_penalty"][0]), 4)
     mota = ppo.metrics["mota"][0]
 
@@ -362,11 +375,11 @@ if __name__ == "__main__":
     print("action ratios: ", np.array(ppo.metrics["action_ratios"]).round(4).squeeze())
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)
-    print("mismatch errrors: ", mismatch_errrors)
+    print("mismatch errrors: ", mismatch_errors)
     print("cost penalty: ", cost_penalty)
     print("total: ", false_positives 
                      + false_negatives 
-                     + mismatch_errrors 
+                     + mismatch_errors 
                      + cost_penalty)
     print("MOTA: ", mota)
 
@@ -501,7 +514,7 @@ if __name__ == "__main__":
 
         false_positives_marlmot = ppo.metrics["false_positives"][0]
         false_negatives_marlmot = ppo.metrics["false_negatives"][0]
-        mismatch_errors_marlmot = ppo.metrics["mismatch_errrors"][0]
+        mismatch_errors_marlmot = ppo.metrics["mismatch_errors"][0]
         mota_marlmot = ppo.metrics["mota"][0]
 
         # Compare SORT and MARLMOT metrics

@@ -59,7 +59,7 @@ class PPO():
                "action_ratios" : [], # ratios of each action per batch
              "false_positives" : [], # total number of false positives per batch
              "false_negatives" : [], # total number of false negatives (missed tracks) per batch
-            "mismatch_errrors" : [], # total number of mismatch errors per batch
+            "mismatch_errors" : [], # total number of mismatch errors per batch
                 "cost_penalty" : [], # total cost of all matches per batch (smaller is better)
                         "mota" : [], # multiple object tracking accuracy
                    "approx_kl" : []  # approximate KL divergence
@@ -178,7 +178,7 @@ class PPO():
             #     mota_marlmot = self.metrics['mota'][-1]
             #     false_positives_marlmot = self.metrics['false_positives'][-1]
             #     false_negatives_marlmot = self.metrics['false_negatives'][-1]
-            #     mismatch_errors_marlmot = self.metrics['mismatch_errrors'][-1]
+            #     mismatch_errors_marlmot = self.metrics['mismatch_errors'][-1]
 
 
             # display epoch results
@@ -238,14 +238,14 @@ class PPO():
         # store metrics
         num_false_positives = 0
         num_false_negatives = 0
-        num_mismatch_errrors = 0
+        num_mismatch_errors = 0
         cost_penalties = 0
         total_num_tracks = 0 # total number of gt tracks for all frames
 
         for (ground_truth, detections, gt_data, frame_size, frame_paths) in self.dataloader:
             
             if not isinstance(frame_size, tuple):
-                print(f"Warning: frame_size is expected to be a tuple but got {type(frame_size)}. Fixing it.")
+                # print(f"Warning: frame_size is expected to be a tuple but got {type(frame_size)}. Fixing it.")
                 frame_size = (frame_size["bb_height"].max(), frame_size["bb_width"].max())
 
             # print(f"batch_rollout frame_size: {frame_size} of type {type(frame_size)}")
@@ -286,8 +286,20 @@ class PPO():
                 # get metrics
                 num_false_positives += len(world.false_positives)
                 num_false_negatives += len(world.missed_tracks)
-                num_mismatch_errrors += world.mismatch_errors
+                num_mismatch_errors += world.mismatch_errors
                 cost_penalties += world.cost_penalty
+
+                for detection, truth in zip(detections, ground_truth):
+                    if detection is None and truth is not None:
+                        num_false_negatives += 1  # Missed ground truth
+                        print(f"Missed detection: False negatives = {num_false_negatives}")
+                    elif detection is not None and truth is None:
+                        num_false_positives += 1  # Extra detection without a ground truth
+                        print(f"Extra detection: False positives = {num_false_positives}")
+                    elif detection != truth:
+                        num_mismatch_errors += 1  # Mismatch (wrong association)
+                        print(f"Mismatch: Mismatch errors = {num_mismatch_errors}")
+
 
                 # store actions and new rewards 
                 batch_rewards.append(rewards)
@@ -311,12 +323,12 @@ class PPO():
 
         mota = 1 - ((num_false_positives 
                      + num_false_negatives 
-                     + num_mismatch_errrors)) / total_num_tracks
+                     + num_mismatch_errors)) / total_num_tracks
 
         self.metrics["action_ratios"].append(action_ratios)
         self.metrics["false_positives"].append(num_false_positives)
         self.metrics["false_negatives"].append(num_false_negatives)
-        self.metrics["mismatch_errrors"].append(num_mismatch_errrors)
+        self.metrics["mismatch_errors"].append(num_mismatch_errors)
         self.metrics["cost_penalty"].append(cost_penalties)
         self.metrics["mota"].append(mota)
 
@@ -506,7 +518,7 @@ class PPO():
                 'action_4_ratio', 
                 'false_positives', 
                 'false_negatives', 
-                'mismatch_errrors', 
+                'mismatch_errors', 
                 'cost_penalty', 
                 'approx_kl']
 
@@ -517,7 +529,7 @@ class PPO():
                         action_4_ratio,
                         np.array(self.metrics['false_positives']),
                         np.array(self.metrics['false_negatives']),
-                        np.array(self.metrics['mismatch_errrors']),
+                        np.array(self.metrics['mismatch_errors']),
                         np.hstack(self.metrics['cost_penalty']),
                         np.array(self.metrics['approx_kl'])]).T
 
