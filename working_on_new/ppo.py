@@ -165,6 +165,22 @@ class PPO():
             self.logger["critic_losses"].append(
                 critic_loss.detach().cpu().numpy().tolist())
 
+###############CHANGES HERE#############################################################################################
+            if savepath: 
+                torch.save(self.actor.state_dict(), os.path.join(savepath, f"actor_{epoch}.pth"))
+
+                if (epoch + 1) % self.checkpoint == 0:
+                    self.save_logger(savepath)
+                    self.save_hyperparameters(savepath)
+                    self.save_metrics(savepath)
+
+            # if sort_metrics is not None:
+            #     mota_marlmot = self.metrics['mota'][-1]
+            #     false_positives_marlmot = self.metrics['false_positives'][-1]
+            #     false_negatives_marlmot = self.metrics['false_negatives'][-1]
+            #     mismatch_errors_marlmot = self.metrics['mismatch_errrors'][-1]
+
+
             # display epoch results
             print("epoch: ", epoch)
             print("Number of Batch samples: ", 
@@ -188,6 +204,8 @@ class PPO():
         # self.save_logger(savepath)
         # self.save_hyperparameters(savepath)
         # self.save_metrics(savepath)
+
+    # def inference(self, video_sequence):
 
 
     def batch_rollout(self):

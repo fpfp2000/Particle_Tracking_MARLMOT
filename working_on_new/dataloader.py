@@ -12,7 +12,7 @@ from pathlib import Path
 
 # custom dataloader for MOT Challenge data
 class TrackDataloader():
-    def __init__(self, datafolder, mode="train", nrows=1000):
+    def __init__(self, datafolder, mode="train", nrows=100):
         """ Custom dataloader for MOT Challenge data
             detection_paths is assumed to always contain matching
             paths for each truth path.
@@ -60,7 +60,7 @@ class TrackDataloader():
         ground_truth_tracks = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
                                           usecols=[0,1,2,3,4,5,6],
                                           header=None,
-                                        #   nrows=self.nrows
+                                          nrows=self.nrows
                                         )
         # set default column names
         ground_truth_tracks.columns = self.track_cols_og
@@ -83,7 +83,7 @@ class TrackDataloader():
         detections = pd.read_csv(os.path.join(data_folder, "det/det.txt"), 
                                  usecols=[0,2,3,4,5,6], 
                                  header=None,
-                                #  nrows=self.nrows
+                                 nrows=self.nrows
                                 )
 
         detections.columns = self.detect_cols
@@ -108,7 +108,7 @@ class TrackDataloader():
         gt_data = pd.read_csv(os.path.join(data_folder, "gt/gt.txt"), 
                                  usecols=[0,2,3,4,5,6], 
                                  header=None,
-                                #  nrows=self.nrows
+                                 nrows=self.nrows
                                  )
 
         gt_data.columns = self.track_cols

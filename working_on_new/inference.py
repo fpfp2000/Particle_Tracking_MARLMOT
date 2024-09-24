@@ -219,7 +219,14 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
 
     print(f"SORT Tracks frames saved to: {frames_dir}")
 
-    return mota, done
+    return {
+        'mota': mota,
+        'false_positives': false_positives,
+        'false_negatives': false_negatives,
+        'mismatch_errors': mismatch_errrors,
+        'cost_penalty': cost_penalty
+    }, done
+# mota, done
 
 
 def draw_sort_tracks(frame, tracks):
@@ -385,7 +392,7 @@ if __name__ == "__main__":
         # get inference data
         ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
-        print(f"Before TestWorld initialization, frame_size is: {frame_size} of type {type(frame_size)}")
+        # print(f"Before TestWorld initialization, frame_size is: {frame_size} of type {type(frame_size)}")
 
         frame_size = dataloader.get_frame_size(dataloader.data_paths[idx])
 
@@ -422,16 +429,22 @@ if __name__ == "__main__":
                         frame_size=frame_size,
                         frame_paths=frame_paths)
 
-        print(f"After TestWorld initialization, frame_size is still: {frame_size} of type {type(frame_size)}")
+        # print(f"After TestWorld initialization, frame_size is still: {frame_size} of type {type(frame_size)}")
 
         # take initial step to get first observations
         observations, _, _ = world.step({})
 
         # eval_sort(dataloader, iou_threshold, min_age)
         # sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
-        mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
 
+        # mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+        
     ########################################################################################## MADE CHANGES HERE
+        sort_metrics, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+
+        print("Obtaining Batch rollouts for MARLMOT...")
+
+
 
         frame_count = 0
         done = False
@@ -482,6 +495,21 @@ if __name__ == "__main__":
             if done:
                 print("Reached end of video frames.")
                 break
+        
+        # After the loop, collect MARLMOT (PPO) metrics
+        print("Collecting MARLMOT (PPO) metrics...")
+
+        false_positives_marlmot = ppo.metrics["false_positives"][0]
+        false_negatives_marlmot = ppo.metrics["false_negatives"][0]
+        mismatch_errors_marlmot = ppo.metrics["mismatch_errrors"][0]
+        mota_marlmot = ppo.metrics["mota"][0]
+
+        # Compare SORT and MARLMOT metrics
+        print(f"Video {idx + 1} Metrics Comparison:")
+        print(f"SORT - MOTA: {sort_metrics['mota']}, False Positives: {sort_metrics['false_positives']}, "
+          f"False Negatives: {sort_metrics['false_negatives']}, Mismatch Errors: {sort_metrics['mismatch_errors']}")
+        print(f"MARLMOT - MOTA: {mota_marlmot}, False Positives: {false_positives_marlmot}, "
+          f"False Negatives: {false_negatives_marlmot}, Mismatch Errors: {mismatch_errors_marlmot}")
 
         # print(f"Processing of {subfolder} completed.")
         print(f"Current Tracks frames saved to: {frames_dir}")
