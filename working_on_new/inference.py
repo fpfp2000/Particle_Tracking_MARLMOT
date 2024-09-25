@@ -204,7 +204,7 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
         elif detection is not None and truth is not None:
             if detection != truth:  # Mismatch (wrong association)
                 mismatch_errors += 1
-                print(f"Mismatch: Mismatch errors = {mismatch_errors}")
+                # print(f"Mismatch: Mismatch errors = {mismatch_errors}")
 
 
     # display metrics
@@ -519,10 +519,16 @@ if __name__ == "__main__":
 
         # Compare SORT and MARLMOT metrics
         print(f"Video {idx + 1} Metrics Comparison:")
-        print(f"SORT - MOTA: {sort_metrics['mota']}, False Positives: {sort_metrics['false_positives']}, "
-          f"False Negatives: {sort_metrics['false_negatives']}, Mismatch Errors: {sort_metrics['mismatch_errors']}")
-        print(f"MARLMOT - MOTA: {mota_marlmot}, False Positives: {false_positives_marlmot}, "
-          f"False Negatives: {false_negatives_marlmot}, Mismatch Errors: {mismatch_errors_marlmot}")
+
+        # print(f"SORT - MOTA: {sort_metrics['mota']}") 
+        # print(f"False Positives: {sort_metrics['false_positives']}")
+        # print(f"False Negatives: {sort_metrics['false_negatives']}") 
+        # print(f"Mismatch Errors: {sort_metrics['mismatch_errors']}")
+        
+        print(f"MARLMOT - MOTA: {mota_marlmot}")
+        print(f" False Positives: {false_positives_marlmot}")
+        print(f"False Negatives: {false_negatives_marlmot}")
+        print(f"Mismatch Errors: {mismatch_errors_marlmot}")
 
         # print(f"Processing of {subfolder} completed.")
         print(f"Current Tracks frames saved to: {frames_dir}")
