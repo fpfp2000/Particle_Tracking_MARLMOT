@@ -250,9 +250,11 @@ class TestWorld():
             current frame
             """
 
+        # print(self.frame_size.head())
+
         # area normalization parameter
-        frame_width = self.frame_size[1]
-        frame_height = self.frame_size[0]
+        frame_width = self.frame_size['bb_width'].values[0]
+        frame_height = self.frame_size['bb_height'].values[0]
         
         area_norm = frame_width * frame_height / 4
 
@@ -394,6 +396,15 @@ class TestWorld():
         observations = self.get_observations()
         rewards = {}
         # self._update_gt_bboxes()
+
+        # Loop through ground truth and detections to update the metrics
+        for detection, truth in zip(self.detections, self.ground_truth):
+            if detection is None and truth is not None:
+                self.missed_tracks.append(truth)  # False negative: missed ground truth
+            elif detection is not None and truth is None:
+                self.false_positives.append(detection)  # False positive: detection without ground truth
+            elif detection != truth:
+                self.mismatch_errors += 1  # ID switch (mismatch error)        
 
         # subtract 1 since frame count is incremented in update_current_tracks
         # subtract 1 allows for final observations before batch loop exit

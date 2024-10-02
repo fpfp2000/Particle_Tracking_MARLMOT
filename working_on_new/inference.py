@@ -526,7 +526,7 @@ if __name__ == "__main__":
         # print(f"Mismatch Errors: {sort_metrics['mismatch_errors']}")
         
         print(f"MARLMOT - MOTA: {mota_marlmot}")
-        print(f" False Positives: {false_positives_marlmot}")
+        print(f"False Positives: {false_positives_marlmot}")
         print(f"False Negatives: {false_negatives_marlmot}")
         print(f"Mismatch Errors: {mismatch_errors_marlmot}")
 
