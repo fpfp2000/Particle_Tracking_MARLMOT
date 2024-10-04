@@ -14,6 +14,7 @@ from working_dataloader import TrackDataloader
 from network import Net
 from working_ppo import PPO
 from working_track_utils import *
+from eval_working import get_sort_rollout
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -88,7 +89,7 @@ def get_sort_actions(observations):
         return actions, logprobs
 
 
-def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
+def get_sort_rollout_visuals(dataloader, iou_threshold, min_age, frame_paths):
     """ Shameless near copy of PPO code to compute SORT rollout """
     batch_obs = []
     batch_actions = []
@@ -247,7 +248,7 @@ def draw_tracks_from_df(frame, tracks_df):
     for _, track in tracks_df.iterrows():
 
         # default color is red 
-        color = (0, 0 ,255) if track.valid == 1 else (255, 0, 0) # red for valid == 1, blue if valid == 0
+        color = (0, 0 ,255) #if track.valid == 1 else (255, 0, 0) # red for valid == 1, blue if valid == 0
 
         # draw bbox        
         x1, y1 = int(track.bb_left), int(track.bb_top)
@@ -329,6 +330,8 @@ if __name__ == "__main__":
             continue 
 
         # get paths to image frames
+        args = get_args()
+        min_age = args.min_age
         frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
 
         # save all frames to make a video of the tracks
@@ -355,13 +358,20 @@ if __name__ == "__main__":
                         #   gt_tracks=gt_tracks,
                         frame_size=frame_size,
                         frame_paths=frame_paths)
+        
+        print(f"min_age: {min_age}, type: {type(min_age)}")
+        print(f"type: {type(frame_paths)}")
+        mota, done = get_sort_rollout(world, iou_threshold, min_age, frame_paths)
 
         # take initial step to get first observations
         observations, _, _ = world.step({})
 
         # eval_sort(dataloader, iou_threshold, min_age)
         # sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
-        mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+        # mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+
+        
+
 
     ########################################################################################## MADE CHANGES HERE
 
@@ -394,7 +404,10 @@ if __name__ == "__main__":
             ######################################################################################
             frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
                                             cv2.COLOR_BGR2RGB),
-                                            world.current_tracks)
+                                            world.sort_tracks)
+            
+            # After drawing the tracks, save the track data to txt files
+            save_tracks_to_txt(world.current_tracks, world.sort_tracks, dataloader.current_video, DIR_PATH)
             ######################################################################################
             
             # save frame as image
@@ -416,7 +429,7 @@ if __name__ == "__main__":
                 break
 
         # print(f"Processing of {subfolder} completed.")
-        print(f"Current Tracks frames saved to: {frames_dir}")
+        print(f"Current(MARLMOT) Tracks frames saved to: {frames_dir}")
         print(f"Truth Tracks frames saved to: {frames_dir_2}")
         print(f"SORT Tracks frames saved to: {frames_dir_3}")
     

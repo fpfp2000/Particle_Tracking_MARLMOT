@@ -253,10 +253,12 @@ class TestWorld():
         # print(self.frame_size.head())
 
         # area normalization parameter
-        frame_width = self.frame_size['bb_width'].values[0]
-        frame_height = self.frame_size['bb_height'].values[0]
+        # frame_width = self.frame_size['bb_width'].values[0]
+        # frame_height = self.frame_size['bb_height'].values[0]
         
-        area_norm = frame_width * frame_height / 4
+        # area_norm = frame_width * frame_height / 4
+        area_norm = self.frame_size[0]*self.frame_size[1] / 4
+
 
         # area normalization parameter
         # area_norm = self.frame_size[0]*self.frame_size[1] / 4

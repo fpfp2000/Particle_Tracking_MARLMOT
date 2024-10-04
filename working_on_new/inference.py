@@ -304,7 +304,7 @@ def draw_tracks_from_df(frame, tracks_df):
     for _, track in tracks_df.iterrows():
 
         # default color is red 
-        color = (0, 0 ,255) if track.valid == 1 else (255, 0, 0) # red for valid == 1, blue if valid == 0
+        color = (0, 0 ,255) #if track.valid == 1 else (255, 0, 0) # red for valid == 1, blue if valid == 0
 
         # draw bbox        
         x1, y1 = int(track.bb_left), int(track.bb_top)

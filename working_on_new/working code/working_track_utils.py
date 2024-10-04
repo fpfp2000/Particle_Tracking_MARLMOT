@@ -6,6 +6,7 @@
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from filterpy.kalman import KalmanFilter
+import os 
 
 
 # helper functions
@@ -135,6 +136,37 @@ def associate(old_boxes, new_boxes, thresh=0.3):
             unmatched_detections.append(d)
     
     return matches, unmatched_detections, unmatched_tracks, cost_matrix
+
+def save_tracks_to_txt(current_tracks, sort_tracks, dataset, output_folder):
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    current_tracks_file = os.path.join(output_folder, f"{dataset}_current_tracks.txt")
+    sort_tracks_file = os.path.join(output_folder, f"{dataset}_SORT_tracks.txt")
+
+    # Write current_tracks to file
+    with open(current_tracks_file, 'w') as f:
+        for track in current_tracks:
+            # Extract bounding box and track information
+            x1, y1, x2, y2 = track.get_state()[0]  
+            track_id = track.id
+            age = track.age
+            # print(f"Track ID: {track.id}, Age Type: {type(track.age)}, Age Value: {track.age}")
+
+            f.write(f"{track_id} {age} {x1} {y1} {x2 - x1} {y2 - y1}\n")  
+
+    # Write SORT_tracks to file
+    with open(sort_tracks_file, 'w') as f:
+        for _, track in sort_tracks.iterrows():
+            # Extract bounding box and track information from DataFrame
+            x1 = int(track['bb_left'])
+            y1 = int(track['bb_top'])
+            width = int(track['bb_width'])
+            height = int(track['bb_height'])
+            track_id = track['id']
+            f.write(f"{track_id} {x1} {y1} {width} {height}\n") 
+
 
 # obstacle class
 class Obstacle():
@@ -311,7 +343,8 @@ class HungarianTracker():
         unmatched_detections, \
         unmatched_tracks, \
         cost_matrix = associate(old_bboxes, 
-                                np.round(detections[:, :4]).astype(int), 
+                                # np.round(detections[:, :4]).astype(int),
+                                np.round(detections.iloc[:, :4]).astype(int), 
                                 thresh=self.iou_threshold)
 
         # get associated tracks
@@ -328,13 +361,13 @@ class HungarianTracker():
         # get new tracks 
         new_tracks = []
         for d in unmatched_detections:
-            box = np.round(detections[d, :4]).astype(int)
-            cat = detections[d, 4]
+            box = np.round(detections.iloc[d, :4]).astype(int)
+            cat = detections.iloc[d, 4]
             cost = 0
             track = Obstacle(box=box, cat=cat)
 
-            track.detection = np.vstack((convert_bbox_to_z(detections[d, :4]), 
-                                         detections[d, 5], # confidence score
+            track.detection = np.vstack((convert_bbox_to_z(detections.iloc[d, :4]), 
+                                         detections.iloc[d, 5], # confidence score
                                          cost))
             new_tracks.append(track)
 
@@ -351,6 +384,7 @@ class HungarianTracker():
         # get valid tracks
         current_tracks = []
         for track in self.tracks:
+            # print(f"Track ID: {track.id}, Age Type: {type(track.age)}, Age Value: {track.age}")
             if track.age >= self.min_age:
                 track.update_observation() # update observation vector
                 current_tracks.append(track)

@@ -54,6 +54,17 @@ class PPO():
         self.min_age = min_age
         self.checkpoint = checkpoint if checkpoint else epochs
 
+        # placeholder for the track ids
+        track_ids = [...]
+
+        # initialize a policy for each track (agent)
+        self.policies = {track_id: policy_model(input_dim=obs_dim, output_dim=action_dim).to(self.device) for track_id in track_ids}
+
+        # Initialize optimizer for each policy
+        self.actor_optim = {track_id: torch.optim.Adam(self.policies[track_id].parameters(), lr=self.lr) for track_id in track_ids}
+
+
+
         # store training metrics
         self.metrics = {
                "action_ratios" : [], # ratios of each action per batch
@@ -190,126 +201,158 @@ class PPO():
         # self.save_metrics(savepath)
 
 
+    # def batch_rollout(self):
+    #     """ 
+    #         Inner training loop:
+    #             collects all rollouts for a single batch. Just like the MARLMOT
+	# 	        paper, we will collect rollouts from all training videos for each batch
+
+    #         For each video, we will collect the S, A, R tuple for each frame.
+    #         NOTE: for the final frame we could take an action, but we don't have any truth 
+    #         data to quantify the rewards, so we leave it out. The length for each video
+    #         should be the total number of frames minus 1.
+            
+    #         Inputs: None
+    #         Outputs:
+    #             batch_obs - Nx18 tensor of batch observations
+    #             batch_actions - Nx1 tensor of batch actions
+    #             batch_logprobs - Nx1 tensor of batch action probabilities
+    #             batch_rtgs - Nx1 tensor of computed Batch Rewards-to-Go 
+
+    #             Note: The length of 'N' will change on each iteration based on the actions
+    #                 taken by the agent. 
+    #     """
+    #     batch_obs = []
+    #     batch_actions = []
+    #     batch_logprobs = []
+    #     batch_rewards = []
+    #     batch_rtgs = []
+
+    #     # store metrics
+    #     num_false_positives = 0
+    #     num_false_negatives = 0
+    #     num_mismatch_errrors = 0
+    #     cost_penalties = 0
+    #     total_num_tracks = 0 # total number of gt tracks for all frames
+
+    #     for (ground_truth, detections, gt_data, gt_tracks, frame_size) in self.dataloader:
+            
+    #         # initialize world object to collect rollouts
+    #         tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
+    #                                    min_age=self.min_age)
+    #         world = self.env(tracker=tracker, 
+    #                          ground_truth=ground_truth, 
+    #                          detections=detections,
+    #                          gt_data=gt_data,
+    #                         #  gt_tracks=gt_tracks,
+    #                          frame_size=frame_size)
+
+    #         # initialize episode rewards list
+    #         ep_rewards = []
+
+    #         # accumulate total number of tracks for mota
+    #         total_num_tracks += len(ground_truth)
+
+    #         # take initial step to get first observations
+    #         observations, _, _ = world.step({})
+
+    #         # collect (S, A, R) trajectory for entire video
+    #         while True:    
+
+    #             # append observations first
+    #             batch_obs += list(observations.values())
+
+    #             # take actions
+    #             actions, logprobs = self.get_actions(observations)
+    #             # get rewards and new observations
+    #             observations, rewards, done = world.step(actions)
+
+    #             # get metrics
+    #             num_false_positives += len(world.false_positives)
+    #             num_false_negatives += len(world.missed_tracks)
+    #             num_mismatch_errrors += world.mismatch_errors
+    #             cost_penalties += world.cost_penalty
+
+    #             # store actions and new rewards 
+    #             batch_rewards.append(rewards)
+    #             batch_actions += list(actions.values())
+    #             batch_logprobs += logprobs
+
+    #             # assume that tracks at each frame occur at the same time step
+    #             ep_rewards.append(rewards) 
+
+    #             if done:
+    #                 break
+                
+    #         ## STEP 4 compute rewards to go for trajectory
+    #         batch_rtgs += self.compute_frame_rtgs(ep_rewards) 
+
+    #     # compute and store metrics
+    #     action_ratios = np.zeros((5,))
+    #     unique_actions, action_counts = np.unique(batch_actions, 
+    #                                               return_counts=True)
+    #     action_ratios[unique_actions] = action_counts/len(batch_actions)
+
+    #     mota = 1 - ((num_false_positives 
+    #                  + num_false_negatives 
+    #                  + num_mismatch_errrors)) / total_num_tracks
+
+    #     self.metrics["action_ratios"].append(action_ratios)
+    #     self.metrics["false_positives"].append(num_false_positives)
+    #     self.metrics["false_negatives"].append(num_false_negatives)
+    #     self.metrics["mismatch_errrors"].append(num_mismatch_errrors)
+    #     self.metrics["cost_penalty"].append(cost_penalties)
+    #     self.metrics["mota"].append(mota)
+
+    #     # convert everything to float32 torch tensors and place them on the device
+    #     batch_obs = torch.tensor(np.array(batch_obs).squeeze(), 
+    #                              dtype=torch.float32).to(self.device)
+    #     batch_actions = torch.tensor(np.array(batch_actions), 
+    #                                  dtype=torch.float32).to(self.device)
+    #     batch_logprobs = torch.tensor(batch_logprobs, 
+    #                                   dtype=torch.float32).to(self.device)
+    #     batch_rtgs = torch.tensor(np.array(batch_rtgs), 
+    #                               dtype=torch.float32).to(self.device)
+
+    #     # update logger
+    #     self.logger["batch_lengths"].append(len(batch_actions))
+    #     self.logger["avg_return"].append(
+    #         np.mean([sum(rew) for rew in batch_rewards if len(rew) > 0]))
+                        
+    #     return batch_obs, batch_actions, batch_logprobs, batch_rtgs
+
     def batch_rollout(self):
         """ 
-            Inner training loop:
-                collects all rollouts for a single batch. Just like the MARLMOT
-		        paper, we will collect rollouts from all training videos for each batch
-
-            For each video, we will collect the S, A, R tuple for each frame.
-            NOTE: for the final frame we could take an action, but we don't have any truth 
-            data to quantify the rewards, so we leave it out. The length for each video
-            should be the total number of frames minus 1.
-            
-            Inputs: None
-            Outputs:
-                batch_obs - Nx18 tensor of batch observations
-                batch_actions - Nx1 tensor of batch actions
-                batch_logprobs - Nx1 tensor of batch action probabilities
-                batch_rtgs - Nx1 tensor of computed Batch Rewards-to-Go 
-
-                Note: The length of 'N' will change on each iteration based on the actions
-                    taken by the agent. 
+        Collect rollouts for each track (agent). Each track will have its own observations, actions, and rewards.
         """
-        batch_obs = []
-        batch_actions = []
-        batch_logprobs = []
-        batch_rewards = []
-        batch_rtgs = []
-
-        # store metrics
-        num_false_positives = 0
-        num_false_negatives = 0
-        num_mismatch_errrors = 0
-        cost_penalties = 0
-        total_num_tracks = 0 # total number of gt tracks for all frames
+        batch_obs = {track_id: [] for track_id in self.policies.keys()}
+        batch_actions = {track_id: [] for track_id in self.policies.keys()}
+        batch_logprobs = {track_id: [] for track_id in self.policies.keys()}
+        batch_rewards = {track_id: [] for track_id in self.policies.keys()}
 
         for (ground_truth, detections, gt_data, gt_tracks, frame_size) in self.dataloader:
-            
-            # initialize world object to collect rollouts
-            tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
-                                       min_age=self.min_age)
-            world = self.env(tracker=tracker, 
-                             ground_truth=ground_truth, 
-                             detections=detections,
-                             gt_data=gt_data,
-                            #  gt_tracks=gt_tracks,
-                             frame_size=frame_size)
+            # Initialize the environment
+            world = self.env(tracker=HungarianTracker(), ground_truth=ground_truth, detections=detections, gt_data=gt_data, frame_size=frame_size)
 
-            # initialize episode rewards list
-            ep_rewards = []
-
-            # accumulate total number of tracks for mota
-            total_num_tracks += len(ground_truth)
-
-            # take initial step to get first observations
             observations, _, _ = world.step({})
 
-            # collect (S, A, R) trajectory for entire video
-            while True:    
-
-                # append observations first
-                batch_obs += list(observations.values())
-
-                # take actions
+            while True:
+                # Get actions for each track
                 actions, logprobs = self.get_actions(observations)
-                # get rewards and new observations
                 observations, rewards, done = world.step(actions)
 
-                # get metrics
-                num_false_positives += len(world.false_positives)
-                num_false_negatives += len(world.missed_tracks)
-                num_mismatch_errrors += world.mismatch_errors
-                cost_penalties += world.cost_penalty
-
-                # store actions and new rewards 
-                batch_rewards.append(rewards)
-                batch_actions += list(actions.values())
-                batch_logprobs += logprobs
-
-                # assume that tracks at each frame occur at the same time step
-                ep_rewards.append(rewards) 
+                # Store track-specific observations, actions, rewards, and logprobs
+                for track_id in actions.keys():
+                    batch_obs[track_id].append(observations[track_id])
+                    batch_actions[track_id].append(actions[track_id])
+                    batch_logprobs[track_id].append(logprobs[track_id])
+                    batch_rewards[track_id].append(rewards[track_id])
 
                 if done:
                     break
+        
+        return batch_obs, batch_actions, batch_logprobs, batch_rewards
                 
-            ## STEP 4 compute rewards to go for trajectory
-            batch_rtgs += self.compute_frame_rtgs(ep_rewards) 
-
-        # compute and store metrics
-        action_ratios = np.zeros((5,))
-        unique_actions, action_counts = np.unique(batch_actions, 
-                                                  return_counts=True)
-        action_ratios[unique_actions] = action_counts/len(batch_actions)
-
-        mota = 1 - ((num_false_positives 
-                     + num_false_negatives 
-                     + num_mismatch_errrors)) / total_num_tracks
-
-        self.metrics["action_ratios"].append(action_ratios)
-        self.metrics["false_positives"].append(num_false_positives)
-        self.metrics["false_negatives"].append(num_false_negatives)
-        self.metrics["mismatch_errrors"].append(num_mismatch_errrors)
-        self.metrics["cost_penalty"].append(cost_penalties)
-        self.metrics["mota"].append(mota)
-
-        # convert everything to float32 torch tensors and place them on the device
-        batch_obs = torch.tensor(np.array(batch_obs).squeeze(), 
-                                 dtype=torch.float32).to(self.device)
-        batch_actions = torch.tensor(np.array(batch_actions), 
-                                     dtype=torch.float32).to(self.device)
-        batch_logprobs = torch.tensor(batch_logprobs, 
-                                      dtype=torch.float32).to(self.device)
-        batch_rtgs = torch.tensor(np.array(batch_rtgs), 
-                                  dtype=torch.float32).to(self.device)
-
-        # update logger
-        self.logger["batch_lengths"].append(len(batch_actions))
-        self.logger["avg_return"].append(
-            np.mean([sum(rew) for rew in batch_rewards if len(rew) > 0]))
-                        
-        return batch_obs, batch_actions, batch_logprobs, batch_rtgs
-            
 
     def get_actions(self, observations):
         """
@@ -320,32 +363,49 @@ class PPO():
                 actions - (dict) maps track ids to discrete actions for observations
                 logprobs -- (tesnor) log probabilities of each action
         """
-        # handle initial frame where no observations are made
-        if len(observations) == 0:
-            return {}, []
+        # # handle initial frame where no observations are made
+        # if len(observations) == 0:
+        #     return {}, []
         
-        # apply policy on current observations 
-        obs = torch.tensor(np.array(list(observations.values())).squeeze(), 
-                           dtype=torch.float).to(self.device)
-        logits = self.actor(obs)
+        # # apply policy on current observations 
+        # obs = torch.tensor(np.array(list(observations.values())).squeeze(), 
+        #                    dtype=torch.float).to(self.device)
+        # logits = self.actor(obs)
 
-        # get actions
-        dist = Categorical(logits=logits)
-        actions = dist.sample()
+        # # get actions
+        # dist = Categorical(logits=logits)
+        # actions = dist.sample()
 
-        # get logprob of each action
-        logprobs = dist.log_prob(actions) 
+        # # get logprob of each action
+        # logprobs = dist.log_prob(actions) 
 
-        # map track IDs to actions
-        try:
-            actions = dict(zip(observations.keys(), 
-                               actions.cpu().numpy()))
-        except TypeError:
-            # handle case for length 1 observation
-            actions = dict(zip(observations.keys(), 
-                               [actions.cpu().numpy().tolist()]))
-            logprobs = logprobs.unsqueeze(0)
-        
+        # # map track IDs to actions
+        # try:
+        #     actions = dict(zip(observations.keys(), 
+        #                        actions.cpu().numpy()))
+        # except TypeError:
+        #     # handle case for length 1 observation
+        #     actions = dict(zip(observations.keys(), 
+        #                        [actions.cpu().numpy().tolist()]))
+        #     logprobs = logprobs.unsqueeze(0)
+
+        actions = {}
+        logprobs = {}
+
+        for track_id, obs in observations.items():
+            # Each track uses its own policy to generate actions
+            obs_tensor = torch.tensor(obs, dtype=torch.float).to(self.device)
+            logits = self.policies[track_id](obs_tensor)
+
+            # Get actions and logprobs for this track's policy
+            dist = Categorical(logits=logits)
+            action = dist.sample()
+            logprob = dist.log_prob(action)
+
+            # Store the track's action and logprob
+            actions[track_id] = action.cpu().numpy()
+            logprobs[track_id] = logprob
+
         return actions, logprobs
     
 
