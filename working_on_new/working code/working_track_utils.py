@@ -18,6 +18,7 @@ def compute_iou(box1, box2):
         Inputs are in the form of:
             xmin, ymin, xmax, ymax = box
         """
+    print(f"Box1: {box1}, box2: {box2}")
     x11, y11, x21, y21 = box1
     x12, y12, x22, y22 = box2
 
@@ -88,6 +89,9 @@ def associate(old_boxes, new_boxes, thresh=0.3):
             unmatched_tracks - unmatched track indexes
             cost_matrix - cost of each association indexes by the amtch indexes
         """
+    # print(f"Old boxes: {old_boxes}")
+    # print(f"New boxes: {new_boxes}")
+
     if (len(new_boxes) == 0) and (len(old_boxes) == 0):
         return [], [], [], []
     elif(len(old_boxes)==0):
@@ -101,7 +105,11 @@ def associate(old_boxes, new_boxes, thresh=0.3):
     # Go through boxes and store the IOU value for each box 
     # You can also use the more challenging cost but still use IOU as a reference for convenience (use as a filter only)
     for i,old_box in enumerate(old_boxes):
-        for j,new_box in enumerate(new_boxes):
+        # for j,new_box in enumerate(new_boxes):
+        for j in range(len(new_boxes)):
+            # new_box = new_box.to_numpy() if hasattr(new_box, 'to_numpy') else np.array(new_box)
+            new_box = new_boxes.iloc[j].tolist()
+            print(f"Old box: {old_box}, New Box: {new_box}")
             cost_matrix[i][j] = compute_cost(old_box, new_box, iou_thresh=thresh)
     
     # Find optimal assignments with the  Hungarian Algorithm
@@ -308,6 +316,7 @@ class HungarianTracker():
             """
         self.iou_threshold = iou_threshold
         self.min_age = min_age
+        # print(f"Min Age (inside Hungarian Tracker): type: {type(self.min_age)}")
         self.tracks = []
         self.frame_count = 0
 
@@ -337,19 +346,50 @@ class HungarianTracker():
             # remove tracks that have been marked for deletion (age = -1)
             if track.age >= 0:
                 old_bboxes.append(track.predict()[0]) # always make a prediction
-                
+        
+        # print(f"detections DataFrame: \n{detections.head()}")
+        # print(f"detections shape: {detections.shape}")
+        # print(detections.columns)
+
+        # converting detections from left top width height to x1, y1, x2, y2
+        detections_converted = detections.copy()
+        detections_converted["x2"] = detections_converted["bb_left"] + detections_converted["bb_width"]
+        detections_converted["y2"] = detections_converted["bb_top"] + detections_converted["bb_height"]
+        # creating a 2d array with x1, y1, x2, y2
+        bbox_columns_converted = ["bb_left", "bb_top", "x2", "y2"]
+
+        # extracting the new bounding boxes
+        new_boxes = np.round(detections_converted[bbox_columns_converted].astype(int))
+        # print(f"New boxes after conversions: {new_boxes}")
+
+        # print(detections_columns.columns)
+        # print("Detections DataFrame before extracting bbox columns:")
+        # print(detections)
+
+        # Extract bounding boxes
+        old_bboxes = np.round(detections_converted[['bb_left', 'bb_top', 'x2', 'y2']].astype(int)).values
+
+        # Print the extracted bounding boxes
+        # print("Extracted bounding boxes:")
+        # print(old_bboxes)
+
+        new_boxes = np.round(detections_converted[bbox_columns_converted].astype(int)).values
+
         # associate boxes to known tracks
         matches, \
         unmatched_detections, \
         unmatched_tracks, \
         cost_matrix = associate(old_bboxes, 
                                 # np.round(detections[:, :4]).astype(int),
-                                np.round(detections.iloc[:, :4]).astype(int), 
+                                np.round(detections_converted[bbox_columns_converted]).astype(int), 
                                 thresh=self.iou_threshold)
 
         # get associated tracks
         tracks = []
         for m in matches:
+            # if len(self.tracks) == 0:
+            #     print("No tracks to update")
+            #     return 
             track = self.tracks[m[0]]
             cost = cost_matrix[m[0], m[1]]
             bbox = detections[m[1], :4]

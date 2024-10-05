@@ -75,6 +75,7 @@ def get_sort_actions(observations):
 
 def get_sort_rollout(world, dataloader, iou_threshold, min_age):
     """ Shameless near copy of PPO code to compute SORT rollout """
+
     batch_obs = []
     batch_actions = []
     batch_logprobs = []
@@ -83,7 +84,7 @@ def get_sort_rollout(world, dataloader, iou_threshold, min_age):
     # store metrics
     num_false_positives = 0
     num_false_negatives = 0
-    num_mismatch_errrors = 0
+    num_mismatch_errors = 0
     cost_penalties = 0
     total_num_tracks = 0
 

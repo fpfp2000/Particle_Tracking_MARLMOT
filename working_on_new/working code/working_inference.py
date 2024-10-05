@@ -161,10 +161,10 @@ def get_sort_rollout_visuals(dataloader, iou_threshold, min_age, frame_paths):
 
 def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     """ Special function to evaluate the results of SORT on a given dataset """
-    print("Obtaining SORT batch rollouts...")
+    "Obtaining SORT batch rollouts..."
 
     # batch_len, \
-    mota, frames, done = get_sort_rollout(dataloader, 
+    mota, frames, done = get_sort_rollout_visuals(dataloader, 
                             iou_threshold, 
                             min_age,
                             frame_paths)
@@ -358,10 +358,8 @@ if __name__ == "__main__":
                         #   gt_tracks=gt_tracks,
                         frame_size=frame_size,
                         frame_paths=frame_paths)
-        
-        print(f"min_age: {min_age}, type: {type(min_age)}")
-        print(f"type: {type(frame_paths)}")
-        mota, done = get_sort_rollout(world, iou_threshold, min_age, frame_paths)
+            
+        mota, done = get_sort_rollout(world, dataloader, iou_threshold, min_age)
 
         # take initial step to get first observations
         observations, _, _ = world.step({})
