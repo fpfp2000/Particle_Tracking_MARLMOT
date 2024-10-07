@@ -230,7 +230,7 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
         frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
         cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
-    print(f"SORT Tracks frames saved to: {frames_dir}")
+    # print(f"SORT Tracks frames saved to: {frames_dir}")
 
     return {
         'mota': mota,

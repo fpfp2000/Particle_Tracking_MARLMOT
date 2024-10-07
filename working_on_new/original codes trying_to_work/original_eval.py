@@ -148,21 +148,68 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
                cost_penalties,
                mota)
 
-    return metrics
+    return metrics, observations
 
 
-def eval_sort(dataloader, iou_threshold, min_age):
+def eval_sort(dataloader, iou_threshold, min_age, txt_files):
     """ Special function to evaluate the results of SORT on a given dataset """
+    if not os.path.exists(txt_files):
+        os.makedirs(txt_files)
+
     print("Obtaining SORT batch rollouts...")
 
-    batch_len, \
-    false_positives, \
-    false_negatives, \
-    mismatch_errrors, \
-    cost_penalty, \
-    mota = get_sort_rollout(dataloader, 
-                            iou_threshold, 
-                            min_age)
+    for sequence_idx, (ground_truth, detections, frame_size) in enumerate(dataloader):
+
+        sequence_dir = os.path.join(txt_files, f"SORT_sequence_{sequence_idx}")
+        os.makedirs(sequence_dir, exist_ok=True)
+        txt_file_path = os.path.join(sequence_dir, f"SORT_output_sequence_{sequence_idx}.txt")
+
+        with open(txt_file_path, 'w') as f: 
+            print(f"Processing sequence {sequence_idx}, saving to { txt_file_path}")
+
+            # batch_len, \
+            # false_positives, \
+            # false_negatives, \
+            # mismatch_errrors, \
+            # cost_penalty, \
+            # mota = get_sort_rollout(dataloader, 
+            #                         iou_threshold, 
+            #                         min_age)
+            
+            metrics, observations = get_sort_rollout(dataloader, 
+                                    iou_threshold, 
+                                    min_age)
+            
+            batch_len, false_positives, false_negatives, mismatch_errrors, cost_penalty, mota = metrics 
+            
+            for obs_idx, obs in enumerate(observations):
+            # observations.items():
+                # if obs is a tensor this interprets it correctly 
+                if isinstance(obs, torch.Tensor):
+                    # converting to numpy
+                    obs = obs.cpu().numpy()
+
+                # print(f"Observation: {obs}, shape: {obs.shape}")
+
+
+                if len(obs) == 18:
+                    frame = obs_idx
+                    track_id = obs_idx
+
+                    x1, y1, x2, y2 = obs[0], obs[1], obs[2], obs[3]
+                    bb_left = x1
+                    bb_top = y1
+                    bb_width = x2 - x1
+                    bb_height = y2 - y1
+
+                    valid = 1
+
+                    f.write(f"{frame}, {track_id}, {bb_left}, {bb_top}, {bb_width}, {bb_height} {valid} \n")
+                else: 
+                    print(f"Unexpected observation structure for {track_id}: {obs} ")
+
+            print(f"Bounding Boxes for sequence {sequence_idx} saved to {txt_file_path}")
+
     
     # display metrics
     print("batch length: ", batch_len)
@@ -175,6 +222,7 @@ def eval_sort(dataloader, iou_threshold, min_age):
                      + mismatch_errrors 
                      + cost_penalty.round(4).squeeze())
     print("MOTA: ", mota)
+    print("SORT evaluation complete")
 
 
 def eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files):
@@ -212,10 +260,10 @@ def eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files):
             for obs_idx, obs in enumerate(batch_obs):
                 # if obs is a tensor this interprets it correctly 
                 if isinstance(obs, torch.Tensor):
-                    # cnverting to numpy
+                    # converting to numpy
                     obs = obs.cpu().numpy()
                 
-                print(f"Observation: {obs}")
+                # print(f"Observation: {obs}, shape: {obs.shape}")
                 
                 #trying to get the bounding box from the first four elements assuming thats where they are
                 if len(obs) == 18:
@@ -223,10 +271,10 @@ def eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files):
                     track_id = obs_idx
 
                     x1, y1, x2, y2 = obs[0], obs[1], obs[2], obs[3]
-                    bb_left = int(x1)
-                    bb_top = int(y1)
-                    bb_width = int(x2 - x1)
-                    bb_height = int(y2 - y1)
+                    bb_left = x1
+                    bb_top = y1
+                    bb_width = x2 - x1
+                    bb_height = y2 - y1
                     # print(f"Extracted Bounding box: ({x1}, {y1}), ({x2}, {y2})")
                     # assume valid as 1
                     valid = 1
@@ -282,5 +330,5 @@ if __name__ == "__main__":
         eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files)
     else:
         print("Evaluating SORT")
-        eval_sort(dataloader, iou_threshold, min_age)
+        eval_sort(dataloader, iou_threshold, min_age, txt_files)
     
