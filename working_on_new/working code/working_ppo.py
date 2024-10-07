@@ -232,7 +232,7 @@ class PPO():
             world = self.env(tracker=tracker, 
                              ground_truth=ground_truth, 
                              detections=detections,
-                             gt_data=gt_data,
+                            #  gt_data=gt_data,
                             #  gt_tracks=gt_tracks,
                              frame_size=frame_size)
 
