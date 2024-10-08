@@ -14,6 +14,7 @@ from dataloader_inference import TrackDataloader
 from network import Net
 from original_ppo import PPO
 from track_utils import *
+from original_eval_inference import *
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -151,14 +152,14 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
 
             # Draw SORT tracks on the current frame
             frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[world.frame - 1]), cv2.COLOR_BGR2RGB), world.current_tracks)
-            frames.append(frame)
+        
 
     metrics = (len(batch_obs))
 
     return metrics, frames, done
 
 
-def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
+def eval_sort_inf(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     """ Special function to evaluate the results of SORT on a given dataset """
     print("Obtaining SORT batch rollouts...")
 
@@ -205,6 +206,49 @@ def draw_sort_tracks(frame, tracks):
         frame = cv2.putText(frame, label, (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, thickness=2)
 
     return frame
+
+def draw_sort_tracks_from_txt(frame, SORT_txt_file_path, current_frame):
+    """ Draws SORT bounding boxes on frame (doesn't make copy) from txt file
+        Inputs:
+            frame - current RGB video frame
+            SORT_txt_file_path - path to txt file 
+            current_frame - current frame number
+        Outputs: 
+            frame - original frame with drawn bboxes
+    """
+    # going through all the subfolders in the SORT txt file folder
+    for subfolder in os.listdir(SORT_txt_file_path):
+        subfolder_path = os.path.join(SORT_txt_file_path, subfolder)
+
+        if os.path.isdir(subfolder):
+            # finding if there is a txt file in the subfolder
+            for file_name in os.listdir(subfolder):
+                if file_name.endswith(".txt"):
+                    txt_file_path = os.path.join(subfolder, file_name)
+
+                    # opeining and processing the text file 
+                    with open(txt_file_path, "r") as f:
+                        rows = f.readlines()
+                        for row in rows:
+                            data = row.strip().split(',')
+                            frame_num = int(data[0])
+                            if frame_num == current_frame:
+                                track_id = data[1]
+                                bb_left = data[2]
+                                bb_top = data[3]
+                                bb_width = data[4]
+                                bb_height = data[5]
+
+                                x1, y1 = bb_left, bb_top
+                                x2, y2 = bb_left + bb_width, bb_top + bb_height
+                                color = (0, 255, 255)
+
+                                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+
+                                label = f"SORT_{track_id}"
+                                frame = cv2.putText(frame, label, (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, thickness=2)
+    return frame 
+
 
 def draw_tracks(frame, tracks):
     """ Draws bounding boxes on frame (doesn't make copy)
@@ -306,20 +350,22 @@ if __name__ == "__main__":
 
     #     subfolder_path = os.path.join(datafolder, subfolder)
 
-    #     # for sub in os.listdir(subfolder_path):
-    #     #     subsubfolder_path = os.path.join(subfolder, sub)
-
     #     if not os.path.isdir(subfolder_path):
     #         continue
 
+    #     # for sub in os.listdir(subfolder_path):
+    #     #     subsubfolder_path = os.path.join(subfolder, sub)
     #     print(f"Processing folder: {subfolder_path}")
-    
-    #     # dataloader = TrackDataloader(subfolder_path, mode=mode)
-    #     # gt_file_path = os.path.join(subfolder_path, "gt", "gt.txt")
-        
 
+    #     SORT_txt_file_path = os.path.join(DIR_PATH, r"txt_files/SORT_txt")
+
+    
+    #     dataloader = TrackDataloader(subfolder_path, mode=mode)
+    #     # frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
+        
     for idx in range(len(dataloader)):
 ########################################################################################## ADDED GT HERE
+
         # get inference data
         ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
 
@@ -344,6 +390,7 @@ if __name__ == "__main__":
         frames_dir_3 = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
         os.makedirs(frames_dir_3, exist_ok=True)
 
+
     ########################################################################################## ADDED GT HERE
         # initialize world object to collect rollouts
         tracker = HungarianTracker(iou_threshold=iou_threshold, 
@@ -361,7 +408,9 @@ if __name__ == "__main__":
 
         # eval_sort(dataloader, iou_threshold, min_age)
         # sort_savepath = os.path.join(DIR_PATH, "sort_tracks")
-        mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+        
+        # using eval_sort from eval.py
+        mota, done = eval_sort_inf(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
 
     ########################################################################################## MADE CHANGES HERE
 
@@ -381,6 +430,8 @@ if __name__ == "__main__":
             
             observations, _, _ = world.step(actions)
 
+            # print(world.current_tracks)
+
             # draw boxes on all tracks
             frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
                                             cv2.COLOR_BGR2RGB), 
@@ -392,9 +443,12 @@ if __name__ == "__main__":
                                             world.truth_tracks)
             
             ######################################################################################
-            frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
-                                            cv2.COLOR_BGR2RGB),
-                                            world.current_tracks)
+            SORT_txt_file_path = os.path.join(DIR_PATH, r"txt_files/SORT_txt")
+
+            frame3 = draw_sort_tracks_from_txt(cv2.cvtColor(cv2.imread(frame_path),
+                                        cv2.COLOR_BGR2RGB),
+                                        SORT_txt_file_path,
+                                        frame_count)
             ######################################################################################
             
             # save frame as image

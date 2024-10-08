@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from torch.distributions.categorical import Categorical
 from train_world import TrainWorld
-from dataloader_og import TrackDataloader
+from dataloader_inference import TrackDataloader
 from network import Net
 from original_ppo import PPO
 from track_utils import *
@@ -86,11 +86,11 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
     # store metrics
     num_false_positives = 0
     num_false_negatives = 0
-    num_mismatch_errors = 0
+    num_mismatch_errrors = 0
     cost_penalties = 0
     total_num_tracks = 0
 
-    for (ground_truth, detections, frame_size) in dataloader:
+    for (ground_truth, detections, gt_data, gt_tracks, frame_size) in dataloader:
         
         # initialize world object to collect rollouts
         tracker = HungarianTracker(iou_threshold=iou_threshold, 
@@ -123,7 +123,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
             # get metrics
             num_false_positives += len(world.false_positives)
             num_false_negatives += len(world.missed_tracks)
-            num_mismatch_errors += world.mismatch_errors
+            num_mismatch_errrors += world.mismatch_errors
             cost_penalties += world.cost_penalty
 
             # store actions and new rewards 
@@ -139,13 +139,13 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
 
     mota = 1 - ((num_false_positives 
                      + num_false_negatives 
-                     + num_mismatch_errors)) / total_num_tracks
+                     + num_mismatch_errrors)) / total_num_tracks
 
     metrics = (len(batch_obs), 
                batch_obs,
                num_false_positives, 
                num_false_negatives, 
-               num_mismatch_errors, 
+               num_mismatch_errrors, 
                cost_penalties,
                mota)
 
@@ -159,9 +159,9 @@ def eval_sort(dataloader, iou_threshold, min_age, txt_files):
 
     print("Obtaining SORT batch rollouts...")
 
-    for sequence_idx, (ground_truth, detections, frame_size) in enumerate(dataloader):
+    for sequence_idx, (ground_truth, detections, gt_data, gt_tracks, frame_size) in enumerate(dataloader):
 
-        sequence_dir = os.path.join(txt_files, f"SORT_txt/SORT_sequence_{sequence_idx}")
+        sequence_dir = os.path.join(txt_files, f"SORT_txt_inf/SORT_sequence_{sequence_idx}")
         os.makedirs(sequence_dir, exist_ok=True)
         txt_file_path = os.path.join(sequence_dir, f"SORT_output_sequence_{sequence_idx}.txt")
 
@@ -171,7 +171,7 @@ def eval_sort(dataloader, iou_threshold, min_age, txt_files):
             # batch_len, \
             # false_positives, \
             # false_negatives, \
-            # mismatch_errors, \
+            # mismatch_errrors, \
             # cost_penalty, \
             # mota = get_sort_rollout(dataloader, 
             #                         iou_threshold, 
@@ -181,7 +181,7 @@ def eval_sort(dataloader, iou_threshold, min_age, txt_files):
                                     iou_threshold, 
                                     min_age)
             
-            batch_len, batch_obs, false_positives, false_negatives, mismatch_errors, cost_penalty, mota = metrics 
+            batch_len, batch_obs, false_positives, false_negatives, mismatch_errrors, cost_penalty, mota = metrics 
             
             for obs_idx, obs in enumerate(batch_obs):
             # observations.items():
@@ -198,10 +198,10 @@ def eval_sort(dataloader, iou_threshold, min_age, txt_files):
                     track_id = obs_idx
 
                     x1, y1, x2, y2 = obs[0], obs[1], obs[2], obs[3]
-                    bb_left = x1 * 1000
-                    bb_top = y1 * 1000
-                    bb_width = (x2 * 1000) - (x1 * 1000)
-                    bb_height = (y2 * 1000) - (y1 * 1000)
+                    bb_left = x1 * 100
+                    bb_top = y1 * 100
+                    bb_width = (x2 * 100) - (x1 * 100)
+                    bb_height = (y2 * 100) - (y1 * 100)
 
                     valid = 1
 
@@ -216,11 +216,11 @@ def eval_sort(dataloader, iou_threshold, min_age, txt_files):
     print("batch length: ", batch_len)
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)
-    print("mismatch errors: ", mismatch_errors)
+    print("mismatch errrors: ", mismatch_errrors)
     print("cost penalty: ", cost_penalty.round(4).squeeze())
     print("total: ", false_positives 
                      + false_negatives 
-                     + mismatch_errors 
+                     + mismatch_errrors 
                      + cost_penalty.round(4).squeeze())
     print("MOTA: ", mota)
     print("SORT evaluation complete")
@@ -245,7 +245,7 @@ def eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files):
     # set PPO actor to current actor/policy
     ppo.actor = policy
 
-    for sequence_idx, (ground_truth, detections, frame_size) in enumerate(dataloader):
+    for sequence_idx, (ground_truth, detections, gt_data, gt_tracks, frame_size) in enumerate(dataloader):
         # Define the output .txt file path for this sequence
         sequence_dir = os.path.join(txt_files, f"MARLMOT_txt/MARLMOT_sequence_{sequence_idx}")
         os.makedirs(sequence_dir, exist_ok=True)
@@ -292,7 +292,7 @@ def eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files):
     # display metrics
     false_positives = ppo.metrics["false_positives"][0]
     false_negatives = ppo.metrics["false_negatives"][0]
-    mismatch_errors = ppo.metrics["mismatch_errors"][0]
+    mismatch_errrors = ppo.metrics["mismatch_errrors"][0]
     cost_penalty = ppo.metrics["cost_penalty"][0].round(4).squeeze()
     mota = ppo.metrics["mota"][0]
 
@@ -300,11 +300,11 @@ def eval_marlmot(dataloader, policy_path, iou_threshold, min_age, txt_files):
     print("action ratios: ", np.array(ppo.metrics["action_ratios"]).round(4).squeeze())
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)
-    print("mismatch errors: ", mismatch_errors)
+    print("mismatch errrors: ", mismatch_errrors)
     print("cost penalty: ", cost_penalty)
     print("total: ", false_positives 
                     + false_negatives 
-                    + mismatch_errors 
+                    + mismatch_errrors 
                     + cost_penalty)
     print("MOTA: ", mota)
     print("MARLMOT evaluation complete")
