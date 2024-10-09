@@ -198,10 +198,10 @@ def eval_sort(dataloader, iou_threshold, min_age, txt_files):
                     track_id = obs_idx
 
                     x1, y1, x2, y2 = obs[0], obs[1], obs[2], obs[3]
-                    bb_left = x1 * 100
-                    bb_top = y1 * 100
-                    bb_width = (x2 * 100) - (x1 * 100)
-                    bb_height = (y2 * 100) - (y1 * 100)
+                    bb_left = x1
+                    bb_top = y1 
+                    bb_width = (x2) - (x1)
+                    bb_height = (y2) - (y1)
 
                     valid = 1
 

@@ -207,6 +207,17 @@ def draw_sort_tracks(frame, tracks):
 
     return frame
 
+def display_whole_img(image):
+    """
+    Shows the whole image using matplotlib to see where bb are for debugging 
+    """
+    plt.figure(figsize=(10, 8))
+    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.title("Image with bounding boxes")
+    plt.axis("off")
+    plt.show()
+
+
 def draw_sort_tracks_from_txt(frame, SORT_txt_file_path, current_frame):
     """ Draws SORT bounding boxes on frame (doesn't make copy) from txt file
         Inputs:
@@ -216,6 +227,8 @@ def draw_sort_tracks_from_txt(frame, SORT_txt_file_path, current_frame):
         Outputs: 
             frame - original frame with drawn bboxes
     """
+    height, width, _ = frame.shape
+    print(f"Image size: width= {width}, height= {height}")
     # going through all the subfolders in the SORT txt file folder
     for subfolder in os.listdir(SORT_txt_file_path):
         subfolder_path = os.path.join(SORT_txt_file_path, subfolder)
@@ -241,12 +254,14 @@ def draw_sort_tracks_from_txt(frame, SORT_txt_file_path, current_frame):
 
                                 x1, y1 = bb_left, bb_top
                                 x2, y2 = bb_left + bb_width, bb_top + bb_height
+                                print(f"Frame {current_frame}: Track ID: {track_id}, Bounding box: ({x1}, {y1}), ({x2}, {y2})")
                                 color = (0, 255, 255)
 
                                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
 
                                 label = f"SORT_{track_id}"
                                 frame = cv2.putText(frame, label, (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, thickness=2)
+    display_whole_img(frame)
     return frame 
 
 
@@ -278,6 +293,7 @@ def draw_tracks(frame, tracks):
                             cv2.FONT_HERSHEY_SIMPLEX, 1, 
                             color, thickness=2)
 
+    
     return frame
 
 def draw_tracks_from_df(frame, tracks_df):

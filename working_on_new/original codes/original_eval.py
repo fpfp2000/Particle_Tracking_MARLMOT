@@ -117,6 +117,9 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
             # get rewards and new observations
             observations, rewards, done = world.step(actions)
 
+            for track_id, obs in observations.items():
+                print(f"Track ID: {track_id}, Bounding Box: {obs}")
+
             # get metrics
             num_false_positives += len(world.false_positives)
             num_false_negatives += len(world.missed_tracks)
