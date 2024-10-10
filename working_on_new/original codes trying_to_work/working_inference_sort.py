@@ -114,6 +114,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     total_num_tracks = 0
 
     frames = []
+    all_tracked_objects = [] # initialize where tracked objects will go
     sort_tracker = Sort()
 ########################################################################################## MADE AN EDIT INSIDE FOR LOOP
     for (ground_truth, detections, gt_data, gt_tracks, frame_size) in dataloader:
@@ -131,14 +132,15 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
             detections = detections.values
 
         tracked_objects = sort_tracker.update(detections)
+        all_tracked_objects.append(tracked_objects)
 
-        sort_path = os.path.join(DIR_PATH, r"inference/SORT_tracks/SORT_results")
-        save_tracking_results(tracked_objects, sort_path)
+        # sort_path = os.path.join(DIR_PATH, r"inference/SORT_tracks/SORT_results")
+        # save_tracking_results(tracked_objects, sort_path)
     
         for frame_idx, frame_path in enumerate(frame_paths):
             frame = cv2.imread(frame_path)
-            frame3 = draw_sort_tracks(frame, tracked_objects)
-            frames.append(frame3)
+            frame_with_tracks = draw_sort_tracks(frame, tracked_objects)
+            frames.append(frame_with_tracks)
     #     # initialize episode rewards list 
     #     ep_rewards = []
 
@@ -181,8 +183,10 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
 
     # metrics = (len(batch_obs))
 
+    print(f"Number of tracked objects: {len(all_tracked_objects)}")
+    print(f"Number of frame paths: {len(frame_paths)}")
     # return metrics, frames, done
-    return batch_obs, batch_actions, batch_logprobs, batch_rewards, frames, tracked_objects
+    return batch_obs, batch_actions, batch_logprobs, batch_rewards, frames, all_tracked_objects
 
 
 def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
@@ -194,7 +198,7 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     #                         iou_threshold, 
     #                         min_age,
     #                         frame_paths)
-    batch_obs, batch_actions, batch_logprobs, batch_rewards, frames, tracked_objects = get_sort_rollout(dataloader, 
+    batch_obs, batch_actions, batch_logprobs, batch_rewards, frames, all_tracked_objects = get_sort_rollout(dataloader, 
                             iou_threshold, 
                             min_age,
                             frame_paths)
@@ -210,7 +214,7 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
         frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
         cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
-    print(f"SORT Tracks frames saved to: {frames_dir}")
+    # print(f"SORT Tracks frames saved to: {frames_dir}")
 
     return batch_obs, batch_rewards
 
@@ -223,9 +227,24 @@ def draw_sort_tracks(frame, tracks):
         Outputs: 
             frame - original frame with drawn bboxes
     """
+    frame_height, frame_width = frame.shape[:2]
+
     for track in tracks:
 
-        track_id, x1, y1, x2, y2 = track.astype(int)
+        track_id, x1, y1, x2, y2 = track.astype(float)
+
+        # print(f"Bounding box before scaling: {x1} {y1} {x2} {y2}")
+        # print(f"Frame size: {frame_width} x {frame_height}")
+
+        if x1 <= 1 and y1 <= 1 and x2 <= 1 and y2 <= 1:
+            x1 = int(x1 * frame_width)
+            y1 = int(y1 * frame_height)
+            x2 = int(x2 * frame_width)
+            y2 = int(y2 * frame_height)
+        else:
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        
+        # print(f"Bounding box after scaling: {x1} {y1} {x2} {y2}")
 
         color = (0, 255, 255)  # Yellow for SORT tracks
 
@@ -364,6 +383,9 @@ if __name__ == "__main__":
         # get paths to image frames
         frame_paths = dataloader.get_frame_paths(dataloader.data_paths[idx])
 
+        # evaluating SORT using made sort function 
+        batch_obs, batch_actions, batch_logprobs, batch_rewards, frames, all_tracked_objects = get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths)
+
         # save all frames to make a video of the tracks
         # video_frames = []
 
@@ -411,7 +433,6 @@ if __name__ == "__main__":
             frame_path = frame_paths[world.frame - 1]
 
             actions, logprobs = ppo.get_actions(observations)
-            
             observations, _, _ = world.step(actions)
 
             # draw boxes on all tracks
@@ -425,19 +446,28 @@ if __name__ == "__main__":
                                             world.truth_tracks)
             
             ######################################################################################
-            frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
+            for frame_count, frame_path in enumerate(frame_paths):
+
+                # print(f"Frame count: {frame_count}, Available tracked_objects : {len(all_tracked_objects)}")
+                
+                if frame_count >= len(all_tracked_objects):
+                    # print(f"Frame count {frame_count} exceeds available tracked objects.")
+                    break
+                tracked_objects = all_tracked_objects[frame_count]
+                frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
                                             cv2.COLOR_BGR2RGB),
                                             tracked_objects)
+                frame_filename_3 = os.path.join(frames_dir_3, f"frame_{frame_count:04d}.png")
+                cv2.imwrite(frame_filename_3, cv2.cvtColor(frame3, cv2.COLOR_RGB2BGR))
+
             ######################################################################################
             
             # save frame as image
             frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
             frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
-            frame_filename_3 = os.path.join(frames_dir_3, f"frame_{frame_count:04d}.png")
 
             cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
             cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
-            cv2.imwrite(frame_filename_3, cv2.cvtColor(frame3, cv2.COLOR_RGB2BGR))
 
             frame_count += 1
 
