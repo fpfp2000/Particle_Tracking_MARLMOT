@@ -310,7 +310,10 @@ if __name__ == '__main__':
 
   if not os.path.exists('output'):
     os.makedirs('output')
-  pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
+
+  pattern = os.path.join(args.seq_path, '*', 'det', 'det.txt')
+    # pattern = os.path.join(args.seq_path, '*', 'det.txt')
+
   for seq_dets_fn in glob.glob(pattern):
     mot_tracker = Sort(max_age=args.max_age, 
                        min_hits=args.min_hits,
