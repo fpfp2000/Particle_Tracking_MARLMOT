@@ -183,8 +183,8 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
 
     # metrics = (len(batch_obs))
 
-    print(f"Number of tracked objects: {len(all_tracked_objects)}")
-    print(f"Number of frame paths: {len(frame_paths)}")
+    # print(f"Number of tracked objects: {len(all_tracked_objects)}")
+    # print(f"Number of frame paths: {len(frame_paths)}")
     # return metrics, frames, done
     return batch_obs, batch_actions, batch_logprobs, batch_rewards, frames, all_tracked_objects
 
@@ -232,17 +232,24 @@ def draw_sort_tracks(frame, tracks):
     for track in tracks:
 
         track_id, x1, y1, x2, y2 = track.astype(float)
+        # print(f"Bounding box: {x1}, {y1}, {x2}, {y2}")
+
+        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
         # print(f"Bounding box before scaling: {x1} {y1} {x2} {y2}")
         # print(f"Frame size: {frame_width} x {frame_height}")
 
-        if x1 <= 1 and y1 <= 1 and x2 <= 1 and y2 <= 1:
-            x1 = int(x1 * frame_width)
-            y1 = int(y1 * frame_height)
-            x2 = int(x2 * frame_width)
-            y2 = int(y2 * frame_height)
-        else:
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        x1 = np.clip(x1, 0, frame.shape[1])
+        y1 = np.clip(y1, 0, frame.shape[0])
+        x2 = np.clip(x2, 0, frame.shape[1])
+        y2 = np.clip(y2, 0, frame.shape[0])
+
+        # x1 = int(x1 * frame_width)
+        # y1 = int(y1 * frame_height)
+        # x2 = int(x2 * frame_width)
+        # y2 = int(y2 * frame_height)
+        # else:
+        #     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
         
         # print(f"Bounding box after scaling: {x1} {y1} {x2} {y2}")
 
