@@ -323,8 +323,8 @@ if __name__ == "__main__":
         frames_dir_2 = os.path.join(savepath_2, dataloader.current_video + "_frames")
         os.makedirs(frames_dir_2, exist_ok=True)
 
-        frames_dir_3 = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
-        os.makedirs(frames_dir_3, exist_ok=True)
+        # frames_dir_3 = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
+        # os.makedirs(frames_dir_3, exist_ok=True)
 
     ########################################################################################## ADDED GT HERE
         # initialize world object to collect rollouts
@@ -374,19 +374,19 @@ if __name__ == "__main__":
                                             world.truth_tracks)
             
             ######################################################################################
-            frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
-                                            cv2.COLOR_BGR2RGB),
-                                            world.current_tracks)
+            # frame3 = draw_sort_tracks(cv2.cvtColor(cv2.imread(frame_path),
+            #                                 cv2.COLOR_BGR2RGB),
+            #                                 world.current_tracks)
             ######################################################################################
             
             # save frame as image
             frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
             frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
-            frame_filename_3 = os.path.join(frames_dir_3, f"frame_{frame_count:04d}.png")
+            # frame_filename_3 = os.path.join(frames_dir_3, f"frame_{frame_count:04d}.png")
 
             cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
             cv2.imwrite(frame_filename_2, cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR))
-            cv2.imwrite(frame_filename_3, cv2.cvtColor(frame3, cv2.COLOR_RGB2BGR))
+            # cv2.imwrite(frame_filename_3, cv2.cvtColor(frame3, cv2.COLOR_RGB2BGR))
 
             frame_count += 1
 
@@ -400,7 +400,7 @@ if __name__ == "__main__":
         # print(f"Processing of {subfolder} completed.")
         print(f"Current Tracks frames saved to: {frames_dir}")
         print(f"Truth Tracks frames saved to: {frames_dir_2}")
-        print(f"SORT Tracks frames saved to: {frames_dir_3}")
+        # print(f"SORT Tracks frames saved to: {frames_dir_3}")
     
 print("ALL VIDEOS PROCESSED")
 ######################################################################################### CHANGES MADE HERE TO GO THROUGH ALL FOLDERS 
