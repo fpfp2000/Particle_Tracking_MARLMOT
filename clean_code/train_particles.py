@@ -9,9 +9,9 @@ import os
 import time
 import argparse
 from train_world import TrainWorld
-from dataloader import TrackDataloader
-from network import Net
-from ppo import PPO
+from dataloader_particles import TrackDataloader
+from network_particles import Net
+from ppo_particles import PPO
 
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -27,9 +27,9 @@ def get_args():
 
     # set default paths here
     parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/clean_code/MOT15/train") 
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking") 
     parser.add_argument("--savepath", dest="savepath", type=str,
-                        default=os.path.join(DIR_PATH, r"trained_models"))
+                        default=os.path.join(DIR_PATH, r"trained_models_particles"))
     args = parser.parse_args()
 
     return args
