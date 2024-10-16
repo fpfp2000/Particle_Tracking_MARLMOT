@@ -235,6 +235,8 @@ class TrainWorld():
 
             # track ID maps to observation
             observations.update({track.id : obs})
+        
+        print(f"obs from train world: {observations}")
 
         return observations
     

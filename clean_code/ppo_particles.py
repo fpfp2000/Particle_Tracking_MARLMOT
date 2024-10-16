@@ -73,8 +73,8 @@ class PPO():
 
         ## STEP 1
         # initialize actor and critic
-        self.actor = policy_model(input_dim=obs_dim, output_dim=action_dim).to(self.device)
-        self.critic = policy_model(input_dim=obs_dim, output_dim=1).to(self.device)
+        self.actor = policy_model(input_dim=6, output_dim=action_dim).to(self.device)
+        self.critic = policy_model(input_dim=6, output_dim=1).to(self.device)
         
         # initialize optimizers for actor and critic
         self.actor_optim = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
@@ -110,12 +110,18 @@ class PPO():
             ## STEP 3 & 4
             # compute batch rollouts/episodes/trajectories 
             batch_obs, batch_acts, batch_log_probs, batch_rtgs = self.batch_rollout()
+            print(batch_obs)
             
             print(f"Shape of batch_obs: {batch_obs.shape}")
 
+            print(f"batch_obs shape before passing to the network: {batch_obs.shape}")
+            
+            # if batch_obs.size == 0:
+            #     raise ValueError("Error: batch_obs is empty!")
 
             ## STEP 5 compute advantages
             V, _ = self.compute_value(batch_obs, batch_acts)
+            print("Hello I am working")
 
             # detach from gradient important for computing actor loss
             A_k = batch_rtgs - V.detach() 
@@ -214,6 +220,10 @@ class PPO():
                 Note: The length of 'N' will change on each iteration based on the actions
                     taken by the agent. 
         """
+
+        print("Starting batch_rollout")
+        print(f"Length of dataloader: {len(self.dataloader)}")
+        
         batch_obs = []
         batch_actions = []
         batch_logprobs = []
@@ -227,7 +237,12 @@ class PPO():
         cost_penalties = 0
         total_num_tracks = 0 # total number of gt tracks for all frames
 
+        
+        
+
         for (ground_truth, detections, gt_data, gt_tracks, frame_size) in self.dataloader:
+            print(f"Hello I am still working")
+            print(f"Ground truth shape: {ground_truth.shape}, Detection shape: {detections.shape}")
             
             # initialize world object to collect rollouts
             tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
@@ -238,15 +253,22 @@ class PPO():
                             #  gt_data=gt_data,
                             #  gt_tracks=gt_tracks,
                              frame_size=frame_size)
+            
 
             # initialize episode rewards list
             ep_rewards = []
 
             # accumulate total number of tracks for mota
             total_num_tracks += len(ground_truth)
+            print(f"Before initial world.step()")
 
             # take initial step to get first observations
             observations, _, _ = world.step({})
+            print(f"Observation after world.step: {observations}")
+
+            if not observations: 
+                print("Error Observations are empty after the world.step")
+                
 
             # collect (S, A, R) trajectory for entire video
             while True:    
@@ -258,6 +280,12 @@ class PPO():
                 actions, logprobs = self.get_actions(observations)
                 # get rewards and new observations
                 observations, rewards, done = world.step(actions)
+                print(f"Observations after world step: {observations}")
+
+                if not observations:
+                    print("Error Observations are empty after the world step")
+                    
+
 
                 # get metrics
                 num_false_positives += len(world.false_positives)
@@ -334,6 +362,7 @@ class PPO():
         # apply policy on current observations 
         obs = torch.tensor(np.array(list(observations.values())).squeeze(), 
                            dtype=torch.float).to(self.device)
+        print(f"Shape of obs passed to actor: {obs.shape}")
         logits = self.actor(obs)
 
         # get actions
@@ -436,8 +465,9 @@ class PPO():
                     updates.
         """
         # compute values for batch observations
+        print(f"Batch obs: {batch_obs}")
         V = self.critic(batch_obs).squeeze()
-
+        print("Hello I am working")
         # get a sample of logprobs from the batch actions
         logits = self.actor(batch_obs)
         dist = Categorical(logits=logits)

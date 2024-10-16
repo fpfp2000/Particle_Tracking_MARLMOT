@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # get dataloader
     dataloader = TrackDataloader(train_folder)
-
+    
     # initialize PPO class with desired hyperparameters
     ppo = PPO(dataloader, TrainWorld, Net, 
               epochs=15,       # total number of batch+training iterations

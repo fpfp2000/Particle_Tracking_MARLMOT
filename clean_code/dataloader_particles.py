@@ -102,13 +102,15 @@ class TrackDataloader():
         gt_data = pd.read_csv( "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt", 
                                  usecols=[0,2,3,4,5,6], 
                                  header=None)
-        
-        if gt_data.iloc[:, 11].isnull().any():
-            print("NaN values found in column 11 of ground truth data")
-        
-        gt_data.fillna(0, inplace=True)
 
         gt_data.columns = self.track_cols_data
+
+        if gt_data.iloc[:, 11].isnull().any():
+            print("NaN values found in column 11 of ground truth data")
+            
+        print("hello i am working in gt_data")
+        gt_data.iloc[:, 11] = gt_data.iloc[:, 11].fillna(0)
+        print("hello i am working in gt_data2")
 
         # scale confidence to 0-1
         gt_data.conf = 1
@@ -171,20 +173,31 @@ class TrackDataloader():
 
         print(f"Ground truth data shape: {ground_truth.shape}")
         
+
+        if ground_truth.shape[0] == 0:
+            raise ValueError("Error: ground truth data is empty")
+
         # if self.mode == "train":
         #     ground_truth = self.get_gt_tracks(data_folder)
         # else:
         #     ground_truth = None
-
+        
         detections = self.get_gt_detections(data_folder)
-        print(f"Column 11 values before processing: {ground_truth.iloc[:, 11]}")
+        # print(f"Loaded ground truth data shape: {ground_truth.shape}, detection shape: {detections.shape}")
+
+        
+        if ground_truth.empty or detections.empty: 
+            print(f"Error data for idx {idx}")
+        
         
         gt_data = self.get_gt_data(data_folder)
+        
         gt_tracks = self.get_gt_tracks(data_folder)
         frame_size = self.get_frame_size(data_folder)
-
+        
         # store current ground truth and video names 
         self.current_video = train_name
+        
 
         return ground_truth, detections, gt_data, gt_tracks, frame_size
     
