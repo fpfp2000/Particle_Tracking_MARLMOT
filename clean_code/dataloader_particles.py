@@ -3,14 +3,14 @@
 """
 
 import os
-from glob import glob
+import glob
 import configparser
 import pandas as pd
 import cv2
 
 # custom dataloader for MOT Challenge data
 class TrackDataloader():
-    def __init__(self, datafolder, mode="train"):
+    def __init__(self, datafolder,imgfolder, mode="train"):
         """ Custom dataloader for MOT Challenge data
             detection_paths is assumed to always contain matching
             paths for each truth path.
@@ -23,16 +23,21 @@ class TrackDataloader():
         # get data
         # train_names = next(iter(os.walk(datafolder)))[1]
 ########################################################################################## I MADE AN EDIT HERE
-        try:
-            train_names = next(os.walk(datafolder))[1]
-        except StopIteration:
-            raise ValueError(f"No subdirectories found in {datafolder}")
+        # try:
+        #     train_names = next(os.walk(datafolder))[1]
+        # except StopIteration:
+        #     raise ValueError(f"No subdirectories found in {datafolder}")
 ########################################################################################## I MADE AN EDIT HERE
 
         # get individual folders of each video
-        self.data_paths = []
-        for name in train_names:
-            self.data_paths.append(os.path.join(datafolder, name))
+        # self.data_paths = []
+        # for name in train_names:
+        #     self.data_paths.append(os.path.join(datafolder, name))
+
+        self.data_paths = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
+        # glob.glob(os.path.join(datafolder, "*.txt"))
+        self.img_path = glob.glob(os.path.join(imgfolder, "*.jpg"))
+        self.img_path.sort()
 
 
         # store current ground truth and detection folder name
@@ -43,7 +48,7 @@ class TrackDataloader():
         self.track_cols_data = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # gt new replaced "valid" with "conf"
 
 
-    def get_gt_tracks(self, data_folder):
+    def get_gt_tracks(self, data_path):
         """ Obtains ground truth tracks DataFrame from input train folder.
             Ground Truth DataFrame contains all ground truth bounding boxes
             and ids for every frame
@@ -53,11 +58,35 @@ class TrackDataloader():
             Outputs:
                 ground_truth_tracks - Ground Truth Tracks DataFrame 
             """
-        ground_truth_tracks = pd.read_csv("/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt",
-                                                    # (os.path.join(data_folder, 
-                                                    #    , "gt/gt.txt"), 
+        data_path = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
+        # print(f"data folder is: {data_path}")
+              
+        txt_files = glob.glob(os.path.join(data_path, "*.txt"))
+        # print(f"txt files are: {txt_files}")
+
+        # List to hold the DataFrames
+        # dataframes = []
+        
+        # Iterate over each txt file and attempt to read it
+        # for txt_file in txt_files:
+        #     print(f"Reading file: {txt_file}")
+        #     try:
+        #         df = pd.read_csv(txt_file, usecols=[0, 1, 2, 3, 4, 5, 6], header=None)
+        #         print(f"File {txt_file} loaded successfully with shape: {df.shape}")
+        #         dataframes.append(df)
+        #     except pd.errors.EmptyDataError:
+        #         print(f"File {txt_file} is empty or malformed.")
+        #     except Exception as e:
+        #         print(f"Error loading {txt_file}: {e}")
+    
+
+        # for txt_file in txt_files:
+        dataframes = [pd.read_csv(txt_file,
                                           usecols=[0,1,2,3,4,5,6], 
-                                          header=None)
+                                          header=None) for txt_file in txt_files]
+             
+        ground_truth_tracks = pd.concat(dataframes, ignore_index=True)
+
         # set default column names
         ground_truth_tracks.columns = self.track_cols
 
@@ -76,11 +105,40 @@ class TrackDataloader():
             Outputs:
                 detections - Ground Truth Tracks DataFrame 
             """
-        detections = pd.read_csv("/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt",
-                                                    # (os.path.join(data_folder, 
-                                                    #    , "det/det.txt"), 
-                                 usecols=[0,2,3,4,5,6], 
-                                 header=None)
+        data_path = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
+        # print(f"data folder is: {data_path}")
+              
+        txt_files = glob.glob(os.path.join(data_path, "*.txt"))
+        # print(f"txt files are: {txt_files}")
+
+        # List to hold the DataFrames
+        # dataframes = []
+        
+        # Iterate over each txt file and attempt to read it
+        # for txt_file in txt_files:
+        #     print(f"Reading file: {txt_file}")
+        #     try:
+        #         df = pd.read_csv(txt_file, usecols=[0, 2, 3, 4, 5, 6], header=None)
+        #         print(f"File {txt_file} loaded successfully with shape: {df.shape}")
+        #         dataframes.append(df)
+        #     except pd.errors.EmptyDataError:
+        #         print(f"File {txt_file} is empty or malformed.")
+        #     except Exception as e:
+        #         print(f"Error loading {txt_file}: {e}")
+
+        # for txt_file in txt_files:
+        dataframes = [pd.read_csv(txt_file,
+                                          usecols=[0,2,3,4,5,6], 
+                                          header=None)for txt_file in txt_files]
+             
+        detections = pd.concat(dataframes, ignore_index=True)
+
+        # detections = pd.read_csv(os.path.join(data_folder, "*.txt"),
+        #     # "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt",
+        #                                             # (os.path.join(data_folder, 
+        #                                             #    , "det/det.txt"), 
+        #                          usecols=[0,2,3,4,5,6], 
+        #                          header=None)
 
         detections.columns = self.detect_cols
 
@@ -99,18 +157,29 @@ class TrackDataloader():
             Outputs:
                 detections - Ground Truth Tracks DataFrame 
             """
-        gt_data = pd.read_csv( "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt", 
-                                 usecols=[0,2,3,4,5,6], 
-                                 header=None)
+        data_path = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
+
+        txt_files = glob.glob(os.path.join(data_path, "*.txt"))
+
+        # for txt_file in txt_files:
+        dataframes = [pd.read_csv(txt_file,
+                                          usecols=[0,2,3,4,5,6], 
+                                          header=None)for txt_file in txt_files]
+             
+        gt_data = pd.concat(dataframes, ignore_index=True)
+
+        # gt_data = pd.read_csv(os.path.join(data_folder, "*.txt"),
+        # # pd.read_csv("/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt", 
+        #                          usecols=[0,2,3,4,5,6], 
+        #                          header=None)
 
         gt_data.columns = self.track_cols_data
 
-        if gt_data.iloc[:, 11].isnull().any():
-            print("NaN values found in column 11 of ground truth data")
-            
-        print("hello i am working in gt_data")
-        gt_data.iloc[:, 11] = gt_data.iloc[:, 11].fillna(0)
-        print("hello i am working in gt_data2")
+        # if gt_data.iloc[:, 11].isnull().any():
+        #     print("NaN values found in column 11 of ground truth data")
+
+        # gt_data.iloc[:, 11] = gt_data.iloc[:, 11].fillna(0)
+ 
 
         # scale confidence to 0-1
         gt_data.conf = 1
@@ -120,15 +189,17 @@ class TrackDataloader():
         return gt_data
 
     @staticmethod
-    def get_frame_size(data_folder):
+    def get_frame_size(img_path):
         """ Obtains frame size for current video 
             Inputs:
                 data_folder - train folder path
             Outputs:
                 frame_size (num rows, num cols)
             """
-        
-        img = cv2.imread(os.path.join(data_folder, "gp3/0500.jpg"))
+
+        img = cv2.imread(img_path)
+        # img = cv2.imread(os.path.join(img_folder, "gp3/0500.jpg"))
+        # print(img)
         height, width, _ = img.shape
         frame_size = (height, width)
 
@@ -155,7 +226,7 @@ class TrackDataloader():
     @staticmethod
     def get_frame_paths(data_folder):
         """ Returns filepaths to image frames """
-        return glob(os.path.join(data_folder, "images/gp3/*.jpg"))
+        return glob.glob(os.path.join(data_folder, "images/gp3/*.jpg"))
 
 
     def __getitem__(self, idx):
@@ -167,33 +238,35 @@ class TrackDataloader():
                 detections - DataFrame of detections at every frame
                 frame_size - frame size list (num rows, num cols)
             """
+        
         data_folder = self.data_paths[idx]
+        img_path = self.img_path[idx]
+        
         train_name = os.path.basename(data_folder)
-        ground_truth = self.get_gt_tracks(data_folder)
+        # ground_truth = self.get_gt_tracks(data_folder)
 
-        print(f"Ground truth data shape: {ground_truth.shape}")
+        # print(f"Ground truth data shape: {ground_truth.shape}")
         
 
-        if ground_truth.shape[0] == 0:
-            raise ValueError("Error: ground truth data is empty")
+        # if ground_truth.shape[0] == 0:
+        #     raise ValueError("Error: ground truth data is empty")
 
-        # if self.mode == "train":
-        #     ground_truth = self.get_gt_tracks(data_folder)
-        # else:
-        #     ground_truth = None
+        if self.mode == "train":
+            ground_truth = self.get_gt_tracks(data_folder)
+        else:
+            ground_truth = None
         
-        detections = self.get_gt_detections(data_folder)
+        
         # print(f"Loaded ground truth data shape: {ground_truth.shape}, detection shape: {detections.shape}")
 
         
-        if ground_truth.empty or detections.empty: 
-            print(f"Error data for idx {idx}")
+        # if ground_truth.empty or detections.empty: 
+        #     print(f"Error data for idx {idx}")
         
-        
+        detections = self.get_gt_detections(data_folder)
         gt_data = self.get_gt_data(data_folder)
-        
         gt_tracks = self.get_gt_tracks(data_folder)
-        frame_size = self.get_frame_size(data_folder)
+        frame_size = self.get_frame_size(img_path)
         
         # store current ground truth and video names 
         self.current_video = train_name

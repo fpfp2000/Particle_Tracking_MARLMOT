@@ -68,11 +68,11 @@ def convert_x_to_bbox(x,score=None):
         """
     w = np.sqrt(x[2] * x[3])
     
-    # if statement that take makes sure there is no dividing by 0 
-    if w == 0: 
-        h = 0
-    else:
-        h = x[2] / (w)
+    # if statement that makes sure there is no dividing by 0 
+    # if w == 0: 
+    #     h = 0
+    # else:
+    #     h = x[2] / (w)
     
     if(score==None):
         return np.array([x[0]-w/2.,x[1]-h/2.,x[0]+w/2.,x[1]+h/2.]).reshape((1,4))

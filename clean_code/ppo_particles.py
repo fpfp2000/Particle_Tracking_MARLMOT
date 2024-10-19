@@ -21,7 +21,7 @@ from track_utils_particles import *
 class PPO():
     def __init__(self, dataloader, env, policy_model, epochs, num_train_iters=4, 
                  lr=1e-4, gamma=0.95, eps=0.2, iou_threshold=0.3, min_age=3, 
-                 device=None, checkpoint=50, obs_dim=6, action_dim=5):
+                 device=None, checkpoint=50, obs_dim=18, action_dim=5):
         """
             Custom Class for Proximal Policy Optimization for MARLMOT
             Assumes a continuous observation space and a discrete action space.
@@ -73,8 +73,8 @@ class PPO():
 
         ## STEP 1
         # initialize actor and critic
-        self.actor = policy_model(input_dim=6, output_dim=action_dim).to(self.device)
-        self.critic = policy_model(input_dim=6, output_dim=1).to(self.device)
+        self.actor = policy_model(input_dim=obs_dim, output_dim=action_dim).to(self.device)
+        self.critic = policy_model(input_dim=obs_dim, output_dim=1).to(self.device)
         
         # initialize optimizers for actor and critic
         self.actor_optim = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
@@ -112,16 +112,11 @@ class PPO():
             batch_obs, batch_acts, batch_log_probs, batch_rtgs = self.batch_rollout()
             print(batch_obs)
             
-            print(f"Shape of batch_obs: {batch_obs.shape}")
-
-            print(f"batch_obs shape before passing to the network: {batch_obs.shape}")
-            
             # if batch_obs.size == 0:
             #     raise ValueError("Error: batch_obs is empty!")
 
             ## STEP 5 compute advantages
             V, _ = self.compute_value(batch_obs, batch_acts)
-            print("Hello I am working")
 
             # detach from gradient important for computing actor loss
             A_k = batch_rtgs - V.detach() 
@@ -223,7 +218,7 @@ class PPO():
 
         print("Starting batch_rollout")
         print(f"Length of dataloader: {len(self.dataloader)}")
-        
+
         batch_obs = []
         batch_actions = []
         batch_logprobs = []

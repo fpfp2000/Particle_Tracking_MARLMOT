@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 class Net(nn.Module):
 
-    def __init__(self, input_dim=6, output_dim=5):
+    def __init__(self, input_dim=18, output_dim=5):
         """
             Input: (batch_size, 18)
             Output: (batch_size, 5)
@@ -23,10 +23,10 @@ class Net(nn.Module):
 
     def forward(self, x):
 
-        if torch.isnan(x).any() or torch.isinf(x).any():
-            nan_cols = torch.isnan(x).any(dim=0)
-            print(f"Columns with NaN values {nan_cols.nonzero()}")
-            raise ValueError("Invalid input: NaN or Inf values detected")
+        # if torch.isnan(x).any() or torch.isinf(x).any():
+        #     nan_cols = torch.isnan(x).any(dim=0)
+        #     print(f"Columns with NaN values {nan_cols.nonzero()}")
+        #     raise ValueError("Invalid input: NaN or Inf values detected")
 
         x = F.elu(self.fc1(x))  
         x = F.elu(self.fc2(x))
