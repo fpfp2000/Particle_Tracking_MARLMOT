@@ -50,7 +50,7 @@ if __name__ == "__main__":
     ppo = PPO(dataloader, TrainWorld, Net, 
               epochs=15,       # total number of batch+training iterations
               num_train_iters=6, # number of iterations to update policy weights
-              lr=5e-5,           # learning rate for policy and critic wieghts
+              lr=5e-5,           # learning rate for policy and critic weights
               gamma=0.95,        # discount factor
               eps=0.2,           # clip factor (limits how size of policy update)
               iou_threshold=0.3, # iou threshold for tracker

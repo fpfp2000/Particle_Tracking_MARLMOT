@@ -27,7 +27,7 @@ def get_args():
 
     # set default paths here
     parser.add_argument("--policy", dest="policy", type=str,
-                        default=os.path.join(DIR_PATH, "trained_models/actor_1161.pth"))
+                        default=os.path.join(DIR_PATH, "trained_models/actor_1498.pth"))
     parser.add_argument("--datafolder", dest="datafolder", type=str, 
                         default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train")
     parser.add_argument("--mode", dest="mode", type=str, default="marlmot")
@@ -164,6 +164,7 @@ def eval_sort(dataloader, iou_threshold, min_age):
                             min_age)
     
     # display metrics
+    
     print("batch length: ", batch_len)
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)

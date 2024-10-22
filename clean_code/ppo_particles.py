@@ -236,9 +236,7 @@ class PPO():
         
 
         for (ground_truth, detections, gt_data, gt_tracks, frame_size) in self.dataloader:
-            print(f"Hello I am still working")
-            print(f"Ground truth shape: {ground_truth.shape}, Detection shape: {detections.shape}")
-            
+           
             # initialize world object to collect rollouts
             tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
                                        min_age=self.min_age)
