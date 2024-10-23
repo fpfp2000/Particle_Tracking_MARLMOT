@@ -268,7 +268,7 @@ def load_ground_truth_bboxes(frame_paths, ground_truth_bboxes, frames_dir_2):
         frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_index:04d}.png")
         cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
 
-        print("Processing og Ground truth frames done")
+    print("Processing of Ground truth frames done")
 
 
 if __name__ == "__main__":
@@ -305,10 +305,12 @@ if __name__ == "__main__":
               iou_threshold=iou_threshold, 
               min_age=min_age, 
               device=device)
+    # setting PPO to current actor/policy
     ppo.actor = policy
 
     for color in colors:
         print(f"Processing color: {color}")
+        # gathering ground truth boxes
         ground_truth_bboxes = load_ground_truth(datafolder, color)
         
         # Create folders for each color's results
@@ -320,31 +322,42 @@ if __name__ == "__main__":
         for idx in range(len(dataloader.img_path)):
             # Get inference data
             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
-            # print(f"Ground truth for idx {idx}: {ground_truth}")
-            detections["conf"] = detections["conf"].fillna(1) # changing NaN with 1
 
-            # print(f"Detections for idx {idx}: {detections}")
+            # changing NaN with 1
+            detections.loc[:, "conf"] = detections["conf"].fillna(1) 
+
             # Get paths to image frames
             frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
             # dataloader.get_frame_paths(dataloader.data_paths[idx])
 
             # Initialize world object to collect rollouts
-            tracker = HungarianTracker(iou_threshold=iou_threshold, min_age=min_age)
-            world = TestWorld(tracker=tracker, detections=detections, ground_truth=ground_truth, 
-                              gt_data=gt_data, frame_size=frame_size, frame_paths=frame_paths)
+            tracker = HungarianTracker(iou_threshold=iou_threshold, 
+                                       min_age=min_age)
+            
+            world = TestWorld(tracker=tracker, 
+                              detections=detections, 
+                              ground_truth=ground_truth, 
+                              gt_data=gt_data, 
+                              frame_size=frame_size, 
+                              frame_paths=frame_paths)
 
             # Take initial step to get first observations
             observations, _, _ = world.step({})
-            print(f"Initial observations: {observations}")
+            # print(f"Initial observations: {observations}")
 
             mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
 
 
             frame_count = 0
-            # print(f"Number of frames found in frame_paths: {len(frame_paths)}")
+
             if len(frame_paths) == 0:
                 raise ValueError("No frames found in the image folder.")
 
+            # gathering ground truth bounding boxes and adding them on the frames
+            load_ground_truth_bboxes(frame_paths=frame_paths,
+                            ground_truth_bboxes=ground_truth_bboxes,
+                            frames_dir_2=frames_dir_2)
+            
             # while True:
             while frame_count < len(frame_paths):
                 
@@ -357,12 +370,24 @@ if __name__ == "__main__":
 
                 print(f"Processing frame {frame_count} from {frame_path}")
 
+                if len(observations) > 0:
+                    obs_list = list(observations.values())
+                    obs_tensor = torch.tensor(np.array(obs_list).squeeze(), dtype=torch.float32).to(device)
+                    if obs_tensor.ndimension() == 1:
+                        obs_tensor = obs_tensor.unsqueeze(0)  # Ensures batch size dimension is present
+                else:
+                    obs_tensor = torch.tensor([]).to(device)
+
                 # Get MARLMOT predictions
                 actions, logprobs = ppo.get_actions(observations)
-                print(f"actions by marlmot: {actions}")
+                # print(f"actions by marlmot: {actions}")
 
                 observations, _, _ = world.step(actions)
-                print(f"Marlmot tracks: {world.current_tracks}")
+
+                for track_id, obs in observations.items():
+                    print(obs.shape)
+
+                # print(f"Marlmot tracks: {world.current_tracks}")
 
                 # Draw MARLMOT tracks
                 frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
@@ -393,9 +418,8 @@ if __name__ == "__main__":
                 if done:
                     print("Reached end of video frames.")
                     break
-            load_ground_truth_bboxes(frame_paths=frame_paths,
-                            ground_truth_bboxes=ground_truth_bboxes,
-                            frames_dir_2=frames_dir_2)
+            
+            
 
         print(f"Processing of {color} completed.")
         print(f"MARLMOT Tracks frames saved to: {frames_dir}")

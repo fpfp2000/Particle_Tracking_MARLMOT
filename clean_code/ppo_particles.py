@@ -217,7 +217,6 @@ class PPO():
         """
 
         print("Starting batch_rollout")
-        print(f"Length of dataloader: {len(self.dataloader)}")
 
         batch_obs = []
         batch_actions = []
@@ -253,7 +252,6 @@ class PPO():
 
             # accumulate total number of tracks for mota
             total_num_tracks += len(ground_truth)
-            print(f"Before initial world.step()")
 
             # take initial step to get first observations
             observations, _, _ = world.step({})
@@ -458,9 +456,8 @@ class PPO():
                     updates.
         """
         # compute values for batch observations
-        print(f"Batch obs: {batch_obs}")
+        # print(f"Batch obs: {batch_obs}")
         V = self.critic(batch_obs).squeeze()
-        print("Hello I am working")
         # get a sample of logprobs from the batch actions
         logits = self.actor(batch_obs)
         dist = Categorical(logits=logits)

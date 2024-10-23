@@ -32,7 +32,9 @@ class TestWorld():
         self.truth_bboxes = [] # current truth bboxes
         self.ground_truth = ground_truth # ground truth DataFrame
         ########################################################################################## I MADE AN EDIT HERE
-
+        # print(f"Initialized ground_truth: {self.ground_truth}")
+        # print(f"Initialized detections: {self.detections}")
+        
         self.frame = 0 # current frame index
         self.current_tracks = [] # confirmed tracks
 
@@ -98,17 +100,29 @@ class TestWorld():
 
 ########################################################################################## I MADE AN EDIT HERE
         # get all detections at current frame
-        detections = self.detections[self.detections.frame == self.frame]
-        gt_data = self.gt_data[self.gt_data.frame == self.frame]
+
+        adjusted_frame_num = self.frame + 500
+
+        detections = self.detections[self.detections.frame == adjusted_frame_num]
+        # replacing NaN values with 1
+        detections.loc[:, "conf"] = detections["conf"].fillna(1) 
+
+        gt_data = self.gt_data[self.gt_data.frame == adjusted_frame_num]
+
+        # print(f"Adjusted frame number: {adjusted_frame_num}")
+        # print(f"Detections for frame {adjusted_frame_num}: {detections}")
+        # print(f"Ground truth data for frame {adjusted_frame_num}: {gt_data}")
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
         else:
+            # print(f"Detections for frame {adjusted_frame_num}")
             detections = np.empty((0, 6))
 
         if not gt_data.empty:
             gt_data = self._get_gt_bboxes(gt_data)
         else:
+            # print(f"Ground truth data for frame {adjusted_frame_num}")
             gt_data = np.empty((0, 6))
 
 
@@ -120,7 +134,7 @@ class TestWorld():
     
 
         # get ground truth tracks 
-        self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == self.frame, :]
+        self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == adjusted_frame_num, :]
         
         # increment frame number
         self.frame += 1
@@ -138,7 +152,7 @@ class TestWorld():
         for track in self.current_tracks:
             obs = track.observation
 
-             # normalize obsrvations
+            # normalize obsrvations
             obs[0] /= self.frame_size[1] # xpos
             obs[1] /= self.frame_size[0] # ypos
             obs[2] /= area_norm # area
@@ -153,8 +167,18 @@ class TestWorld():
             obs[16] = sigmoid(obs[16] - 3) # frames since last association
             obs[17] = sigmoid(obs[17] - 3) # hit streak
 
+            # making sure observation is a column vector 
+            obs = obs.reshape(18, 1)
+
             # track ID maps to observation
             observations.update({track.id : obs})
+        
+        # # to make sure observations are in the correct format 
+        # obs_list = list(observations.values())
+        # obs_array = np.array(obs_list).squeeze()
+
+        # if obs_array.ndim == 1:
+        #     obs_array = obs_array[np.newaxis, :]
 
         return observations
     

@@ -58,7 +58,12 @@ def convert_bbox_to_z(bbox):
     x = bbox[0] + w/2.
     y = bbox[1] + h/2.
     s = w * h    #scale is just area
-    r = w / float(h)
+
+    if h == 0:
+        r = 0 
+    else:
+        r = w / float(h)
+        
     return np.array([x, y, s, r]).reshape((4, 1))
 
 
@@ -68,11 +73,10 @@ def convert_x_to_bbox(x,score=None):
         """
     w = np.sqrt(x[2] * x[3])
     
-    # if statement that makes sure there is no dividing by 0 
-    # if w == 0: 
-    #     h = 0
-    # else:
-    #     h = x[2] / (w)
+    if w == 0:
+        h = 0
+    else:
+        h = x[2] / w
     
     if(score==None):
         return np.array([x[0]-w/2.,x[1]-h/2.,x[0]+w/2.,x[1]+h/2.]).reshape((1,4))
