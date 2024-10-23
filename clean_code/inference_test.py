@@ -245,9 +245,31 @@ def draw_tracks_from_df(frame, tracks_df, color=(0, 255, 0)):
 def load_ground_truth(datafolder, color):
     """ Load ground truth bounding boxes from color-specific .txt files """
     txt_file = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
-    ground_truth_bboxes = pd.read_csv(txt_file, usecols=[0, 2, 3, 4, 5, 6], 
-                                      header=None, names=["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"])
+    ground_truth_bboxes = pd.read_csv(txt_file, usecols=[0, 1, 2, 3, 4, 5, 6], 
+                                      header=None, names=["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "conf"])
     return ground_truth_bboxes
+
+def load_ground_truth_bboxes(frame_paths, ground_truth_bboxes, frames_dir_2):
+
+    #iterating through each frame in the folder
+    for frame in frame_paths: 
+        # grabbing last three digits of frame name 
+        frame_index_str = os.path.basename(frame)[-7:-4]
+        frame_index = int(frame_index_str)
+
+        # loading image
+        img = cv2.cvtColor(cv2.imread(frame), cv2.COLOR_BGR2RGB)
+
+        #grabbing ground truth bounding box for specific frame
+        frame_bboxes = ground_truth_bboxes[ground_truth_bboxes["frame"] == frame_index]
+
+        frame_with_gt = draw_tracks_from_df(img.copy(), frame_bboxes)
+
+        frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_index:04d}.png")
+        cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
+
+        print("Processing og Ground truth frames done")
+
 
 if __name__ == "__main__":
 
@@ -298,7 +320,10 @@ if __name__ == "__main__":
         for idx in range(len(dataloader.img_path)):
             # Get inference data
             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+            # print(f"Ground truth for idx {idx}: {ground_truth}")
+            detections["conf"] = detections["conf"].fillna(1) # changing NaN with 1
 
+            # print(f"Detections for idx {idx}: {detections}")
             # Get paths to image frames
             frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
             # dataloader.get_frame_paths(dataloader.data_paths[idx])
@@ -310,6 +335,7 @@ if __name__ == "__main__":
 
             # Take initial step to get first observations
             observations, _, _ = world.step({})
+            print(f"Initial observations: {observations}")
 
             mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
 
@@ -331,43 +357,45 @@ if __name__ == "__main__":
 
                 print(f"Processing frame {frame_count} from {frame_path}")
 
-                img = cv2.imread(frame_path)
-                if img is None:
-                    print(f"Failed to load image at: {frame_path}")
-                    continue 
-
                 # Get MARLMOT predictions
                 actions, logprobs = ppo.get_actions(observations)
+                print(f"actions by marlmot: {actions}")
+
                 observations, _, _ = world.step(actions)
+                print(f"Marlmot tracks: {world.current_tracks}")
 
                 # Draw MARLMOT tracks
-                print(world.current_tracks)
-                frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), cv2.COLOR_BGR2RGB), world.current_tracks)
+                frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                                 cv2.COLOR_BGR2RGB), 
+                                                 world.current_tracks)
+                # print(f"Current frame num: {world.frame}")
 
                 # Filter ground truth for current frame
-                current_frame_number = world.frame
-                print(f"Current frame number: {current_frame_number}")
+                # frame_bboxes = ground_truth_bboxes[ground_truth_bboxes["frame"] == world.frame]
+                # if frame_bboxes.empty: 
+                #     print(f"No ground truth bounding boxes found for frame: {world.frame}")
+                # else:
+                #     print(f"Found bounding boxes for frame: {world.frame}")
 
-                frame_bboxes = ground_truth_bboxes[ground_truth_bboxes["frame"] == current_frame_number]
-                if frame_bboxes.empty: 
-                    print(f"No ground truth bounding boxes found for frame: {current_frame_number}")
-                else:
-                    print(f"Found bounidn gboxes for frame: {current_frame_number}")
-                    
-                frame_with_gt = draw_tracks_from_df(frame.copy(), frame_bboxes, color=(0, 255, 0))
+                # frame_with_gt = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path), 
+                                                                #  cv2.COLOR_BGR2RGB), 
+                                                                #  frame_bboxes)
 
                 # Save frames
                 frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-                frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+                # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
 
                 cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
+                # cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
 
                 frame_count += 1
 
                 if done:
                     print("Reached end of video frames.")
                     break
+            load_ground_truth_bboxes(frame_paths=frame_paths,
+                            ground_truth_bboxes=ground_truth_bboxes,
+                            frames_dir_2=frames_dir_2)
 
         print(f"Processing of {color} completed.")
         print(f"MARLMOT Tracks frames saved to: {frames_dir}")
