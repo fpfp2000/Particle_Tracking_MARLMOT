@@ -110,7 +110,6 @@ class PPO():
             ## STEP 3 & 4
             # compute batch rollouts/episodes/trajectories 
             batch_obs, batch_acts, batch_log_probs, batch_rtgs = self.batch_rollout()
-            print(batch_obs)
             
             # if batch_obs.size == 0:
             #     raise ValueError("Error: batch_obs is empty!")
@@ -255,7 +254,6 @@ class PPO():
 
             # take initial step to get first observations
             observations, _, _ = world.step({})
-            print(f"Observation after world.step: {observations}")
 
             if not observations: 
                 print("Error Observations are empty after the world.step")
@@ -271,7 +269,6 @@ class PPO():
                 actions, logprobs = self.get_actions(observations)
                 # get rewards and new observations
                 observations, rewards, done = world.step(actions)
-                print(f"Observations after world step: {observations}")
 
                 if not observations:
                     print("Error Observations are empty after the world step")
@@ -353,7 +350,6 @@ class PPO():
         # apply policy on current observations 
         obs = torch.tensor(np.array(list(observations.values())).squeeze(), 
                            dtype=torch.float).to(self.device)
-        print(f"Shape of obs passed to actor: {obs.shape}")
         logits = self.actor(obs)
 
         # get actions

@@ -250,7 +250,15 @@ def load_ground_truth(datafolder, color):
     return ground_truth_bboxes
 
 def load_ground_truth_bboxes(frame_paths, ground_truth_bboxes, frames_dir_2):
+    """
+    Processes frames and draws only the ground truth bounding boxes, 
+    and saves the resulting images to the specified directory.
 
+    Args:
+        frame_paths (list): List of paths to frame images.
+        ground_truth_bboxes (DataFrame): DataFrame containing ground truth bounding box data.
+        frames_dir_2 (str): Directory to save ground truth frames.
+    """
     #iterating through each frame in the folder
     for frame in frame_paths: 
         # grabbing last three digits of frame name 
@@ -270,6 +278,62 @@ def load_ground_truth_bboxes(frame_paths, ground_truth_bboxes, frames_dir_2):
 
     print("Processing of Ground truth frames done")
 
+
+def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
+    """
+    Saves MARLMOT bounding boxes on frames for each color.
+
+    Args:
+    - frame_paths: List of paths to image frames.
+    - frames_dir: Directory to save frames with MARLMOT bounding boxes.
+    - ppo: The PPO object for generating actions.
+    - world: The environment/world object.
+    - device: Device for computation.
+    """
+
+    # Take the initial step to get the initial observations
+    observations, _, _ = world.step({})
+
+    frame_count = 0
+    # iterating over all frames
+    while frame_count < len(frame_paths):
+                
+        # frame_path = frame_paths[world.frame - 1]
+        frame_path = frame_paths[frame_count]
+        # print(f"Processing frame {frame_count} from {frame_path}")
+
+        if len(observations) > 0:
+            obs_list = list(observations.values())
+            obs_tensor = torch.tensor(np.array(obs_list).squeeze(), dtype=torch.float32).to(device)
+            if obs_tensor.ndimension() == 1:
+                obs_tensor = obs_tensor.unsqueeze(0)  # Ensures batch size dimension is present
+        else:
+            obs_tensor = torch.tensor([]).to(device)
+
+        # Get MARLMOT predictions
+        actions, logprobs = ppo.get_actions(observations)
+        # step froward with MARLMOT actions
+        observations, _, _ = world.step(actions)
+        # Draw MARLMOT tracks
+        frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+                                            cv2.COLOR_BGR2RGB), 
+                                            world.current_tracks)
+
+
+        # Save frames
+        frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+        # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
+
+        cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        # cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
+
+        frame_count += 1
+
+        # if done:
+        #     print("Reached end of video frames.")
+        #     break
+    print("MARLMOT Processing done")
+            
 
 if __name__ == "__main__":
 
@@ -305,13 +369,18 @@ if __name__ == "__main__":
               iou_threshold=iou_threshold, 
               min_age=min_age, 
               device=device)
+    
     # setting PPO to current actor/policy
     ppo.actor = policy
 
     for color in colors:
         print(f"Processing color: {color}")
-        # gathering ground truth boxes
-        ground_truth_bboxes = load_ground_truth(datafolder, color)
+
+        # Use a new dataloader for each color
+        data_folder = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
+        dataloader = TrackDataloader(data_folder, imgfolder, mode=mode)
+
+        
         
         # Create folders for each color's results
         frames_dir = os.path.join(savepath, f"frames_{color}")
@@ -319,105 +388,93 @@ if __name__ == "__main__":
         os.makedirs(frames_dir, exist_ok=True)
         os.makedirs(frames_dir_2, exist_ok=True)
 
-        for idx in range(len(dataloader.img_path)):
+        # getting paths to image frames
+        frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
+        
+        # gathering ground truth boxes
+        ground_truth_bboxes = load_ground_truth(datafolder, color)
+        # gathering ground truth bounding boxes and adding them on the frames
+        load_ground_truth_bboxes(frame_paths=frame_paths,
+                            ground_truth_bboxes=ground_truth_bboxes,
+                            frames_dir_2=frames_dir_2)
+        
+        # for idx in range(len(dataloader.img_path)):
             # Get inference data
-            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx)
+        ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(0) #was idx
 
             # changing NaN with 1
-            detections.loc[:, "conf"] = detections["conf"].fillna(1) 
+        detections.loc[:, "conf"] = detections["conf"].fillna(1) 
 
             # Get paths to image frames
-            frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
+            # frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
             # dataloader.get_frame_paths(dataloader.data_paths[idx])
 
             # Initialize world object to collect rollouts
-            tracker = HungarianTracker(iou_threshold=iou_threshold, 
+        tracker = HungarianTracker(iou_threshold=iou_threshold, 
                                        min_age=min_age)
             
-            world = TestWorld(tracker=tracker, 
+        world = TestWorld(tracker=tracker, 
                               detections=detections, 
                               ground_truth=ground_truth, 
                               gt_data=gt_data, 
                               frame_size=frame_size, 
                               frame_paths=frame_paths)
 
-            # Take initial step to get first observations
-            observations, _, _ = world.step({})
+         # Take initial step to get first observations
+         # observations, _, _ = world.step({})
+
+        load_marlmot_bboxes(frame_paths=frame_paths,
+                            frames_dir=frames_dir,
+                            ppo=ppo,
+                            world=world,
+                            device=device)
             # print(f"Initial observations: {observations}")
 
-            mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
+            # mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
 
+            # frame_count = 0
 
-            frame_count = 0
+            # if len(frame_paths) == 0:
+            #     raise ValueError("No frames found in the image folder.")
 
-            if len(frame_paths) == 0:
-                raise ValueError("No frames found in the image folder.")
-
-            # gathering ground truth bounding boxes and adding them on the frames
-            load_ground_truth_bboxes(frame_paths=frame_paths,
-                            ground_truth_bboxes=ground_truth_bboxes,
-                            frames_dir_2=frames_dir_2)
-            
             # while True:
-            while frame_count < len(frame_paths):
+            # while frame_count < len(frame_paths):
                 
-                # if world.frame - 1 >= len(frame_paths):
-                    # print(f"Frame index {world.frame - 1} out of bounds. Breaking the loop.")
-                    # break
+            #     # frame_path = frame_paths[world.frame - 1]
+            #     frame_path = frame_paths[frame_count]
+            #     # print(f"Processing frame {frame_count} from {frame_path}")
 
-                # frame_path = frame_paths[world.frame - 1]
-                frame_path = frame_paths[frame_count]
+            #     if len(observations) > 0:
+            #         obs_list = list(observations.values())
+            #         obs_tensor = torch.tensor(np.array(obs_list).squeeze(), dtype=torch.float32).to(device)
+            #         if obs_tensor.ndimension() == 1:
+            #             obs_tensor = obs_tensor.unsqueeze(0)  # Ensures batch size dimension is present
+            #     else:
+            #         obs_tensor = torch.tensor([]).to(device)
 
-                print(f"Processing frame {frame_count} from {frame_path}")
+            #     # Get MARLMOT predictions
+            #     actions, logprobs = ppo.get_actions(observations)
+            #     # step froward with MARLMOT actions
+            #     observations, _, _ = world.step(actions)
 
-                if len(observations) > 0:
-                    obs_list = list(observations.values())
-                    obs_tensor = torch.tensor(np.array(obs_list).squeeze(), dtype=torch.float32).to(device)
-                    if obs_tensor.ndimension() == 1:
-                        obs_tensor = obs_tensor.unsqueeze(0)  # Ensures batch size dimension is present
-                else:
-                    obs_tensor = torch.tensor([]).to(device)
+            #     # Draw MARLMOT tracks
+            #     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
+            #                                      cv2.COLOR_BGR2RGB), 
+            #                                      world.current_tracks)
+            
 
-                # Get MARLMOT predictions
-                actions, logprobs = ppo.get_actions(observations)
-                # print(f"actions by marlmot: {actions}")
+            #     # Save frames
+            #     frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
+            #     # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
 
-                observations, _, _ = world.step(actions)
+            #     cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            #     # cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
 
-                for track_id, obs in observations.items():
-                    print(obs.shape)
+            #     frame_count += 1
 
-                # print(f"Marlmot tracks: {world.current_tracks}")
-
-                # Draw MARLMOT tracks
-                frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-                                                 cv2.COLOR_BGR2RGB), 
-                                                 world.current_tracks)
-                # print(f"Current frame num: {world.frame}")
-
-                # Filter ground truth for current frame
-                # frame_bboxes = ground_truth_bboxes[ground_truth_bboxes["frame"] == world.frame]
-                # if frame_bboxes.empty: 
-                #     print(f"No ground truth bounding boxes found for frame: {world.frame}")
-                # else:
-                #     print(f"Found bounding boxes for frame: {world.frame}")
-
-                # frame_with_gt = draw_tracks_from_df(cv2.cvtColor(cv2.imread(frame_path), 
-                                                                #  cv2.COLOR_BGR2RGB), 
-                                                                #  frame_bboxes)
-
-                # Save frames
-                frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-                # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
-
-                cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                # cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
-
-                frame_count += 1
-
-                if done:
-                    print("Reached end of video frames.")
-                    break
+            #     # if done:
+            #     #     print("Reached end of video frames.")
+            #     #     break
             
             
 

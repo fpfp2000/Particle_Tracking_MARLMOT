@@ -34,8 +34,9 @@ class TrackDataloader():
         # for name in train_names:
         #     self.data_paths.append(os.path.join(datafolder, name))
 
-        self.data_paths = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
-        # glob.glob(os.path.join(datafolder, "*.txt"))
+        self.data_paths = glob.glob(os.path.join("/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3", "*.txt"))
+
+        # "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
         self.img_path = glob.glob(os.path.join(imgfolder, "*.jpg"))
         self.img_path.sort()
 
@@ -96,7 +97,7 @@ class TrackDataloader():
         return ground_truth_tracks
     
 
-    def get_gt_detections(self, data_folder):
+    def get_gt_detections(self, data_path):
         """ Obtains ground truth Detections DataFrame from input train folder.
             Ground Truth DataFrame contains all ground truth detection bounding boxes
             and confidence score for every frame. Occluded objects are not included.
@@ -148,7 +149,7 @@ class TrackDataloader():
 
         return detections
     
-    def get_gt_data(self, data_folder):
+    def get_gt_data(self, data_path):
         """ Obtains ground truth Detections DataFrame from input train folder.
             Ground Truth DataFrame contains all ground truth detection bounding boxes
             and confidence score for every frame. Occluded objects are not included.
