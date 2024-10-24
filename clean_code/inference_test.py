@@ -332,7 +332,6 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
         # if done:
         #     print("Reached end of video frames.")
         #     break
-    print("MARLMOT Processing done")
             
 
 if __name__ == "__main__":
@@ -356,7 +355,7 @@ if __name__ == "__main__":
     colors = ["black", "blue", "brown", "green", "orange", "purple", "red", "yellow"]
 
     # get dataloader
-    dataloader = TrackDataloader(datafolder,imgfolder, mode=mode)
+    dataloader = TrackDataloader(imgfolder=imgfolder, mode=mode)
 
     # get actor/policy
     policy = Net(input_dim=18, output_dim=5).to(device)
@@ -377,8 +376,8 @@ if __name__ == "__main__":
         print(f"Processing color: {color}")
 
         # Use a new dataloader for each color
-        data_folder = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
-        dataloader = TrackDataloader(data_folder, imgfolder, mode=mode)
+        # data_folder = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
+        # dataloader = TrackDataloader(data_folder, imgfolder, mode=mode)
 
         
         
@@ -397,23 +396,24 @@ if __name__ == "__main__":
         load_ground_truth_bboxes(frame_paths=frame_paths,
                             ground_truth_bboxes=ground_truth_bboxes,
                             frames_dir_2=frames_dir_2)
+        print("MARLMOT Processing Done")
         
-        # for idx in range(len(dataloader.img_path)):
+        for idx in range(len(dataloader.img_path)):
             # Get inference data
-        ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(0) #was idx
+            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color) #was idx
 
             # changing NaN with 1
-        detections.loc[:, "conf"] = detections["conf"].fillna(1) 
+            detections.loc[:, "conf"] = detections["conf"].fillna(1) 
 
             # Get paths to image frames
             # frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
             # dataloader.get_frame_paths(dataloader.data_paths[idx])
 
             # Initialize world object to collect rollouts
-        tracker = HungarianTracker(iou_threshold=iou_threshold, 
+            tracker = HungarianTracker(iou_threshold=iou_threshold, 
                                        min_age=min_age)
             
-        world = TestWorld(tracker=tracker, 
+            world = TestWorld(tracker=tracker, 
                               detections=detections, 
                               ground_truth=ground_truth, 
                               gt_data=gt_data, 
@@ -423,7 +423,7 @@ if __name__ == "__main__":
          # Take initial step to get first observations
          # observations, _, _ = world.step({})
 
-        load_marlmot_bboxes(frame_paths=frame_paths,
+            load_marlmot_bboxes(frame_paths=frame_paths,
                             frames_dir=frames_dir,
                             ppo=ppo,
                             world=world,
