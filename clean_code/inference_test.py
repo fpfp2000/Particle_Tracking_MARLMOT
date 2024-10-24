@@ -364,7 +364,7 @@ if __name__ == "__main__":
 
     # get default PPO class
     ppo = PPO(dataloader, TestWorld, Net, 
-              epochs=1, 
+              epochs=100, 
               iou_threshold=iou_threshold, 
               min_age=min_age, 
               device=device)
