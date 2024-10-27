@@ -75,7 +75,7 @@ def get_sort_actions(observations):
         return actions, logprobs
 
 
-def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
+def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder, color):
     """ Shameless near copy of PPO code to compute SORT rollout """
     batch_obs = []
     batch_actions = []
@@ -88,7 +88,8 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     frames = []
 
 ########################################################################################## MADE AN EDIT INSIDE FOR LOOP
-    for (ground_truth, detections, gt_data, gt_tracks, frame_size) in dataloader:
+    for idx in range(len(dataloader)):
+        ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color)
         
         # initialize world object to collect rollouts
         tracker = HungarianTracker(iou_threshold=iou_threshold, 
@@ -146,7 +147,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths):
     return metrics, frames, done
 
 
-def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
+def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT, datafolder, color):
     """ Special function to evaluate the results of SORT on a given dataset """
     # print("Obtaining SORT batch rollouts...")
 
@@ -154,7 +155,9 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
     mota, frames, done = get_sort_rollout(dataloader, 
                             iou_threshold, 
                             min_age,
-                            frame_paths)
+                            frame_paths,
+                            datafolder,
+                            color)
     
     # display metrics
     # print("batch length: ", batch_len)
@@ -168,7 +171,7 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT):
         frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
         cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
-    # print(f"SORT Tracks frames saved to: {frames_dir}")
+    print(f"SORT Tracks frames saved to: {frames_dir}")
 
     return mota, done
 
@@ -332,6 +335,33 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
         # if done:
         #     print("Reached end of video frames.")
         #     break
+
+def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, min_age, datafolder, color):
+    """
+    Saves SORT bounding boxes on frames for each color.
+
+    Args:
+    - dataloader: The dataloader object for loading frame data.
+    - iou_threshold: IoU threshold for SORT.
+    - min_age: Minimum age of the tracks to be considered valid.
+    - frame_paths: List of paths to image frames.
+    - frames_dir_SORT: Directory to save frames with SORT bounding boxes.
+    """
+
+    mota, frames, _ = get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder, color)
+
+    frame_count = 0
+    while frame_count < len(frame_paths):
+        frame_filename = os.path.join(frames_dir_sort, f"frame_{frame_count:04d}.png")
+
+        if frame_count < len(frames):
+            frame = frames[frame_count]
+            cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        else:
+            break
+        frame_count += 1
+
+    print(f"SORT Processing done, frames saved to: {frames_dir_sort}")
             
 
 if __name__ == "__main__":
@@ -384,8 +414,10 @@ if __name__ == "__main__":
         # Create folders for each color's results
         frames_dir = os.path.join(savepath, f"frames_{color}")
         frames_dir_2 = os.path.join(savepath_2, f"truth_{color}")
+        frames_dir_3 = os.path.join(savepath_SORT, f"sort_{color}")
         os.makedirs(frames_dir, exist_ok=True)
         os.makedirs(frames_dir_2, exist_ok=True)
+        os.makedirs(frames_dir_3, exist_ok=True)
 
         # getting paths to image frames
         frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
@@ -396,11 +428,11 @@ if __name__ == "__main__":
         load_ground_truth_bboxes(frame_paths=frame_paths,
                             ground_truth_bboxes=ground_truth_bboxes,
                             frames_dir_2=frames_dir_2)
-        print("MARLMOT Processing Done")
         
+        # MARLMOT processing 
         for idx in range(len(dataloader.img_path)):
             # Get inference data
-            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color) #was idx
+            ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color) 
 
             # changing NaN with 1
             detections.loc[:, "conf"] = detections["conf"].fillna(1) 
@@ -428,6 +460,10 @@ if __name__ == "__main__":
                             ppo=ppo,
                             world=world,
                             device=device)
+            # print("MARLMOT Processing Done")
+
+        # SORT processing 
+        load_sort_bboxes(frame_paths, frames_dir_3, dataloader, iou_threshold,  min_age, datafolder, color)
             # print(f"Initial observations: {observations}")
 
             # mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
@@ -481,4 +517,6 @@ if __name__ == "__main__":
         print(f"Processing of {color} completed.")
         print(f"MARLMOT Tracks frames saved to: {frames_dir}")
         print(f"Truth Tracks frames saved to: {frames_dir_2}")
+        print(f"SORT tracks frames saved to: {frames_dir_3}")
+
     print("ALL COLORS PROCESSED")

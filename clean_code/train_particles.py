@@ -27,7 +27,7 @@ def get_args():
 
     # set default paths here
     parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking") 
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3") 
     parser.add_argument("--savepath", dest="savepath", type=str,
                         default=os.path.join(DIR_PATH, r"trained_models_particles"))
     args = parser.parse_args()

@@ -19,25 +19,6 @@ class TrackDataloader():
                 mode - (str) mode for dataloader (train or test)
             """
         self.mode = mode.lower()
-        
-        # get data
-        # train_names = next(iter(os.walk(datafolder)))[1]
-########################################################################################## I MADE AN EDIT HERE
-        # try:
-        #     train_names = next(os.walk(datafolder))[1]
-        # except StopIteration:
-        #     raise ValueError(f"No subdirectories found in {datafolder}")
-########################################################################################## I MADE AN EDIT HERE
-
-        # get individual folders of each video
-        # self.data_paths = []
-        # for name in train_names:
-        #     self.data_paths.append(os.path.join(datafolder, name))
-
-        # self.data_paths = data_paths
-        # "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
-
-        # glob.glob(os.path.join("/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3", "*.txt"))
 
         self.img_path = glob.glob(os.path.join(imgfolder, "*.jpg"))
         self.img_path.sort()
