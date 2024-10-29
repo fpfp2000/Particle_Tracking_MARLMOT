@@ -20,7 +20,7 @@ from track_utils_particles import *
 
 class PPO():
     def __init__(self, dataloader, env, policy_model, epochs, num_train_iters=4, 
-                 lr=1e-4, gamma=0.95, eps=0.2, iou_threshold=0.3, min_age=3, 
+                 lr=1e-4, gamma=0.95, eps=0.2, iou_threshold=0.5, min_age=1, #3, 
                  device=None, checkpoint=50, obs_dim=18, action_dim=5):
         """
             Custom Class for Proximal Policy Optimization for MARLMOT

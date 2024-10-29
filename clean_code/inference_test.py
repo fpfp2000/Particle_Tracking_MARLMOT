@@ -32,7 +32,7 @@ def get_args():
                         default=os.path.join(DIR_PATH, r"inference_particles/SORT_tracks"))
     
     parser.add_argument("--idx", dest="idx", type=int, default=0)
-    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3)
+    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.5) #0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
     parser.add_argument("--video", dest="video", type=bool, choices=[True, False], default=True)
     parser.add_argument("--mode", dest="mode", type=str, choices=["train", "test"], default="train")
@@ -218,7 +218,7 @@ def draw_tracks(frame, tracks):
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
 
         # draw track info
-        label = f"{track.id}_{track.age}"
+        label = f"M: {track.id}_{track.age}"
         frame = cv2.putText(frame, label, (x1 + 10, y1 + 10), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, 
                             color, thickness=2)
@@ -247,6 +247,7 @@ def draw_tracks_from_df(frame, tracks_df, color=(0, 255, 0)):
 
 def load_ground_truth(datafolder, color):
     """ Load ground truth bounding boxes from color-specific .txt files """
+
     txt_file = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
     ground_truth_bboxes = pd.read_csv(txt_file, usecols=[0, 1, 2, 3, 4, 5, 6], 
                                       header=None, names=["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "conf"])
@@ -257,7 +258,7 @@ def load_ground_truth_bboxes(frame_paths, ground_truth_bboxes, frames_dir_2):
     Processes frames and draws only the ground truth bounding boxes, 
     and saves the resulting images to the specified directory.
 
-    Args:
+    Inputs:
         frame_paths (list): List of paths to frame images.
         ground_truth_bboxes (DataFrame): DataFrame containing ground truth bounding box data.
         frames_dir_2 (str): Directory to save ground truth frames.
@@ -286,12 +287,12 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
     """
     Saves MARLMOT bounding boxes on frames for each color.
 
-    Args:
-    - frame_paths: List of paths to image frames.
-    - frames_dir: Directory to save frames with MARLMOT bounding boxes.
-    - ppo: The PPO object for generating actions.
-    - world: The environment/world object.
-    - device: Device for computation.
+    Inputs:
+        frame_paths: List of paths to image frames.
+        frames_dir: Directory to save frames with MARLMOT bounding boxes.
+        ppo: The PPO object for generating actions.
+        world: The environment/world object.
+        device: Device for computation.
     """
 
     # Take the initial step to get the initial observations
@@ -340,12 +341,12 @@ def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, mi
     """
     Saves SORT bounding boxes on frames for each color.
 
-    Args:
-    - dataloader: The dataloader object for loading frame data.
-    - iou_threshold: IoU threshold for SORT.
-    - min_age: Minimum age of the tracks to be considered valid.
-    - frame_paths: List of paths to image frames.
-    - frames_dir_SORT: Directory to save frames with SORT bounding boxes.
+    Inputs:
+        dataloader: The dataloader object for loading frame data.
+        iou_threshold: IoU threshold for SORT.
+        min_age: Minimum age of the tracks to be considered valid.
+        frame_paths: List of paths to image frames.
+        frames_dir_SORT: Directory to save frames with SORT bounding boxes.
     """
 
     mota, frames, _ = get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder, color)
@@ -394,7 +395,7 @@ if __name__ == "__main__":
 
     # get default PPO class
     ppo = PPO(dataloader, TestWorld, Net, 
-              epochs=100, 
+              epochs=1, 
               iou_threshold=iou_threshold, 
               min_age=min_age, 
               device=device)
