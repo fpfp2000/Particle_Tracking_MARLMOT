@@ -203,24 +203,31 @@ class Obstacle():
             """
         # define constant velocity model
         self.kf = KalmanFilter(dim_x=7, dim_z=4) 
-        self.kf.F = np.array([[1,0,0,0,1,0,0],
-                              [0,1,0,0,0,1,0],
-                              [0,0,1,0,0,0,1],
-                              [0,0,0,1,0,0,0],
-                              [0,0,0,0,1,0,0],
-                              [0,0,0,0,0,1,0],
-                              [0,0,0,0,0,0,1]])
+        self.kf.F = np.array ([[1, 0, 0, 0, 0.5, 0, 0],
+                      [0, 1, 0, 0, 0, 0.5, 0],
+                      [0, 0, 1, 0, 0, 0, 0.5],
+                      [0, 0, 0, 1, 0, 0, 0],
+                      [0, 0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 0, 1, 0],
+                      [0, 0, 0, 0, 0, 0, 1]])
+        # ([[1,0,0,0,1,0,0],
+        #                       [0,1,0,0,0,1,0],
+        #                       [0,0,1,0,0,0,1],
+        #                       [0,0,0,1,0,0,0],
+        #                       [0,0,0,0,1,0,0],
+        #                       [0,0,0,0,0,1,0],
+        #                       [0,0,0,0,0,0,1]])
         
         self.kf.H = np.array([[1,0,0,0,0,0,0],
                               [0,1,0,0,0,0,0],
                               [0,0,1,0,0,0,0],
                               [0,0,0,1,0,0,0]])
 
-        self.kf.R[2:,2:] *= 10.
-        self.kf.P[4:,4:] *= 1000. #give high uncertainty to the unobservable initial velocities
-        self.kf.P *= 10.
-        self.kf.Q[-1,-1] *= 0.01
-        self.kf.Q[4:,4:] *= 0.01
+        self.kf.R[2:,2:] *= 5 #10.
+        self.kf.P[4:,4:] *= 500 #1000. #give high uncertainty to the unobservable initial velocities
+        self.kf.P *= 5 #10.
+        self.kf.Q[-1,-1] *= 0.05 #0.01
+        self.kf.Q[4:,4:] *= 0.05 #0.01
         # get initial state
         self.kf.x[:4] = convert_bbox_to_z(box)
 
@@ -276,7 +283,7 @@ class Obstacle():
 
 
 class HungarianTracker():
-    def __init__(self, iou_threshold=0.3, min_age=1):
+    def __init__(self, iou_threshold=0.01, min_age=1):
         """ Tracks obstacle objects with Hungarian association to 
             args:
                 iou_threshold - min threshold needed to perform IOU association

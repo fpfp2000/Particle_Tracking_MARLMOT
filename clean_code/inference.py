@@ -200,7 +200,7 @@ def draw_sort_tracks(frame, tracks):
             frame - original frame with drawn bboxes
     """
     for track in tracks:
-        color = (0, 255, 255)  # Yellow for SORT tracks
+        color = (0, 255, 255) 
 
         # draw bbox
         x1, y1, x2, y2 = np.round(track.get_state()[0]).astype(int)

@@ -32,7 +32,7 @@ def get_args():
                         default=os.path.join(DIR_PATH, r"inference_particles/SORT_tracks"))
     
     parser.add_argument("--idx", dest="idx", type=int, default=0)
-    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.5) #0.3)
+    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.01) #0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
     parser.add_argument("--video", dest="video", type=bool, choices=[True, False], default=True)
     parser.add_argument("--mode", dest="mode", type=str, choices=["train", "test"], default="train")
@@ -87,13 +87,15 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
 
     frames = []
 
+    tracker = HungarianTracker(iou_threshold=iou_threshold, 
+                                   min_age=min_age)
 ########################################################################################## MADE AN EDIT INSIDE FOR LOOP
     for idx in range(len(dataloader)):
         ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color)
         
         # initialize world object to collect rollouts
-        tracker = HungarianTracker(iou_threshold=iou_threshold, 
-                                   min_age=min_age)
+        # tracker = HungarianTracker(iou_threshold=iou_threshold, 
+        #                            min_age=min_age)
         world = TestWorld(tracker=tracker, 
                            ground_truth=ground_truth, 
                            detections=detections,
@@ -103,7 +105,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
                         )
 
         # initialize episode rewards list 
-        ep_rewards = []
+        # ep_rewards = []
 
         # accumulate total number of tracks
         total_num_tracks += len(ground_truth)
@@ -128,19 +130,21 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
             batch_logprobs += logprobs
 
             # assume that tracks at each frame occur at the same time step
-            ep_rewards.append(rewards) 
+            # ep_rewards.append(rewards) 
 
             # debug
             # print(f"world.frame: {world.frame}, len(frame_paths): {len(world.frame_paths)}")
 
             # Ensuring frames are within bounds
-            if world.frame - 1 < 0 or world.frame - 1 >= len(world.frame_paths):
-                # print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
-                break
+            # if world.frame - 1 < 0 or world.frame - 1 >= len(world.frame_paths):
+            #     # print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
+            #     break
 
+            frame_idx = world.frame - 1
+            if 0 <= frame_idx < len(world.frame_paths):
             # Draw SORT tracks on the current frame
-            frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[world.frame - 1]), cv2.COLOR_BGR2RGB), world.current_tracks)
-            frames.append(frame)
+                frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[frame_idx]), cv2.COLOR_BGR2RGB), world.current_tracks)
+                frames.append(frame)
 
     metrics = (len(batch_obs))
 
@@ -185,7 +189,7 @@ def draw_sort_tracks(frame, tracks):
             frame - original frame with drawn bboxes
     """
     for track in tracks:
-        color = (0, 255, 255)  # Yellow for SORT tracks
+        color = (0, 255, 255)  
 
         # draw bbox
         x1, y1, x2, y2 = np.round(track.get_state()[0]).astype(int)
@@ -350,7 +354,7 @@ def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, mi
     """
 
     mota, frames, _ = get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder, color)
-
+    
     frame_count = 0
     while frame_count < len(frame_paths):
         frame_filename = os.path.join(frames_dir_sort, f"frame_{frame_count:04d}.png")
@@ -360,6 +364,7 @@ def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, mi
             cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         else:
             break
+
         frame_count += 1
 
     print(f"SORT Processing done, frames saved to: {frames_dir_sort}")
@@ -416,6 +421,7 @@ if __name__ == "__main__":
         frames_dir = os.path.join(savepath, f"frames_{color}")
         frames_dir_2 = os.path.join(savepath_2, f"truth_{color}")
         frames_dir_3 = os.path.join(savepath_SORT, f"sort_{color}")
+        
         os.makedirs(frames_dir, exist_ok=True)
         os.makedirs(frames_dir_2, exist_ok=True)
         os.makedirs(frames_dir_3, exist_ok=True)
@@ -465,54 +471,6 @@ if __name__ == "__main__":
 
         # SORT processing 
         load_sort_bboxes(frame_paths, frames_dir_3, dataloader, iou_threshold,  min_age, datafolder, color)
-            # print(f"Initial observations: {observations}")
-
-            # mota, done = eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT)
-
-            # frame_count = 0
-
-            # if len(frame_paths) == 0:
-            #     raise ValueError("No frames found in the image folder.")
-
-            # while True:
-            # while frame_count < len(frame_paths):
-                
-            #     # frame_path = frame_paths[world.frame - 1]
-            #     frame_path = frame_paths[frame_count]
-            #     # print(f"Processing frame {frame_count} from {frame_path}")
-
-            #     if len(observations) > 0:
-            #         obs_list = list(observations.values())
-            #         obs_tensor = torch.tensor(np.array(obs_list).squeeze(), dtype=torch.float32).to(device)
-            #         if obs_tensor.ndimension() == 1:
-            #             obs_tensor = obs_tensor.unsqueeze(0)  # Ensures batch size dimension is present
-            #     else:
-            #         obs_tensor = torch.tensor([]).to(device)
-
-            #     # Get MARLMOT predictions
-            #     actions, logprobs = ppo.get_actions(observations)
-            #     # step froward with MARLMOT actions
-            #     observations, _, _ = world.step(actions)
-
-            #     # Draw MARLMOT tracks
-            #     frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
-            #                                      cv2.COLOR_BGR2RGB), 
-            #                                      world.current_tracks)
-            
-
-            #     # Save frames
-            #     frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-            #     # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
-
-            #     cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-            #     # cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
-
-            #     frame_count += 1
-
-            #     # if done:
-            #     #     print("Reached end of video frames.")
-            #     #     break
-            
             
 
         print(f"Processing of {color} completed.")
