@@ -283,7 +283,7 @@ class Obstacle():
 
 
 class HungarianTracker():
-    def __init__(self, iou_threshold=0.01, min_age=1):
+    def __init__(self, iou_threshold=0.3, min_age=1):
         """ Tracks obstacle objects with Hungarian association to 
             args:
                 iou_threshold - min threshold needed to perform IOU association

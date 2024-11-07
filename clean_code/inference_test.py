@@ -30,16 +30,49 @@ def get_args():
                         default=os.path.join(DIR_PATH, r"inference_particles/current_tracks"))
     parser.add_argument("--savepath_SORT", dest="savepath_SORT", type=str,
                         default=os.path.join(DIR_PATH, r"inference_particles/SORT_tracks"))
-    
+
     parser.add_argument("--idx", dest="idx", type=int, default=0)
-    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.01) #0.3)
+    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3) #0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
     parser.add_argument("--video", dest="video", type=bool, choices=[True, False], default=True)
     parser.add_argument("--mode", dest="mode", type=str, choices=["train", "test"], default="train")
     parser.add_argument("--device", dest="device", type=str, choices=["cuda", "cpu"], default=r"cpu")
+    
+    parser.add_argument("--target_particle_id", dest="target_particle_id", type=int, default=None,
+                        help="ID of the target particle to track")
+
+
     args = parser.parse_args()
 
     return args
+
+def filter_particle_data(detections, ground_truth, target_particle_id):
+    # Filter the ground truth DataFrame to get only the rows with the target particle ID
+    target_gt = ground_truth[ground_truth["id"] == target_particle_id]
+
+    # Create an empty list to store filtered detections
+    filtered_detections = []
+
+    # Iterate over each frame in target_gt
+    for _, row in target_gt.iterrows():
+        frame_number = row["frame"]
+        bb_left = row["bb_left"]
+        bb_top = row["bb_top"]
+        bb_width = row["bb_width"]
+        bb_height = row["bb_height"]
+        conf = row.get("conf", 1)  # Default confidence to 1 if not available
+
+        # Find the detection in the same frame as the ground truth
+        detection_in_frame = detections[detections["frame"] == frame_number]
+
+        # Filter based on the bounding box from ground truth
+        if not detection_in_frame.empty:
+            filtered_detections.append([frame_number, bb_left, bb_top, bb_width, bb_height, conf])
+
+    # Convert to a DataFrame
+    filtered_detections_df = pd.DataFrame(filtered_detections, columns=detections.columns)
+
+    return filtered_detections_df
 
 def get_sort_actions(observations):
         """
@@ -101,7 +134,8 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
                            detections=detections,
                            gt_data=gt_data,
                            frame_size=frame_size,
-                           frame_paths=frame_paths
+                           frame_paths=frame_paths,
+                           target_particle_id=target_particle_id
                         )
 
         # initialize episode rewards list 
@@ -387,6 +421,8 @@ if __name__ == "__main__":
     mode = args.mode
     device = args.device
 
+    target_particle_id = 1
+
     # Colors to loop through
     colors = ["black", "blue", "brown", "green", "orange", "purple", "red", "yellow"]
 
@@ -441,8 +477,15 @@ if __name__ == "__main__":
             # Get inference data
             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color) 
 
+            # Define target_particle_id
+            target_particle_id = 1  # Replace with the specific ID you want to track
+
+            # Use the filtering function to filter out the desired particle detections and ground truth
+            detections_filtered = filter_particle_data(detections, ground_truth, target_particle_id)
+            detections_filtered.loc[:, "conf"] = detections_filtered["conf"].fillna(1) 
+
             # changing NaN with 1
-            detections.loc[:, "conf"] = detections["conf"].fillna(1) 
+            # detections.loc[:, "conf"] = detections["conf"].fillna(1) 
 
             # Get paths to image frames
             # frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
@@ -457,7 +500,8 @@ if __name__ == "__main__":
                               ground_truth=ground_truth, 
                               gt_data=gt_data, 
                               frame_size=frame_size, 
-                              frame_paths=frame_paths)
+                              frame_paths=frame_paths,
+                              target_particle_id=target_particle_id)
 
          # Take initial step to get first observations
          # observations, _, _ = world.step({})

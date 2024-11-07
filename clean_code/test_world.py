@@ -10,7 +10,7 @@ from track_utils_particles import *
 
 
 class TestWorld():
-    def __init__(self, tracker, detections, gt_data, frame_size, ground_truth, frame_paths):
+    def __init__(self, tracker, detections, gt_data, frame_size, ground_truth, frame_paths, target_particle_id=None):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -31,6 +31,7 @@ class TestWorld():
         self.truth_tracks = [] # current truth tracks 
         self.truth_bboxes = [] # current truth bboxes
         self.ground_truth = ground_truth # ground truth DataFrame
+        self.target_particle_id = target_particle_id
         ########################################################################################## I MADE AN EDIT HERE
         # print(f"Initialized ground_truth: {self.ground_truth}")
         # print(f"Initialized detections: {self.detections}")
@@ -109,15 +110,18 @@ class TestWorld():
 
         gt_data = self.gt_data[self.gt_data.frame == adjusted_frame_num]
 
-        # print(f"Adjusted frame number: {adjusted_frame_num}")
-        # print(f"Detections for frame {adjusted_frame_num}: {detections}")
-        # print(f"Ground truth data for frame {adjusted_frame_num}: {gt_data}")
+        # Filter ground truth detections by target_particle_id if ground truth data is being used
+        if gt and "id" in gt_data.columns:
+            gt_data = gt_data[gt_data["id"] == self.target_particle_id]
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
         else:
-            # print(f"Detections for frame {adjusted_frame_num}")
             detections = np.empty((0, 6))
+
+        # print(f"Adjusted frame number: {adjusted_frame_num}")
+        # print(f"Detections for frame {adjusted_frame_num}: {detections}")
+        # print(f"Ground truth data for frame {adjusted_frame_num}: {gt_data}")
 
         if not gt_data.empty:
             gt_data = self._get_gt_bboxes(gt_data)
@@ -135,7 +139,8 @@ class TestWorld():
 
         # get ground truth tracks 
         self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == adjusted_frame_num, :]
-        
+        if self.target_particle_id is not None:
+            self.truth_tracks = self.truth_tracks[self.truth_tracks["id"] == self.target_particle_id]
         # increment frame number
         self.frame += 1
 ########################################################################################## I MADE AN EDIT HERE

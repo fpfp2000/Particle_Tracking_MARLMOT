@@ -10,7 +10,7 @@ import cv2
 
 # custom dataloader for MOT Challenge data
 class TrackDataloader():
-    def __init__(self, imgfolder, mode="train"):
+    def __init__(self, imgfolder, mode="train", track_particle_id=None):
         """ Custom dataloader for MOT Challenge data
             detection_paths is assumed to always contain matching
             paths for each truth path.
@@ -30,7 +30,7 @@ class TrackDataloader():
         self.track_cols = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "valid"]
         self.detect_cols = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"]
         self.track_cols_data = ["frame", "bb_left", "bb_top", "bb_width", "bb_height", "conf"] # gt new replaced "valid" with "conf"
-
+        self.track_particle_id = track_particle_id
 
     def get_gt_tracks(self, datafolder, color):
         """ Obtains ground truth tracks DataFrame from input train folder.
@@ -42,38 +42,9 @@ class TrackDataloader():
             Outputs:
                 ground_truth_tracks - Ground Truth Tracks DataFrame 
             """
-        # data_path = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
-        # print(f"data folder is: {data_path}")
               
         txt_file = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
-        # print(f"txt files are: {txt_files}")
-
-        # List to hold the DataFrames
-        # dataframes = []
         
-        # Iterate over each txt file and attempt to read it
-        # for txt_file in txt_files:
-        #     print(f"Reading file: {txt_file}")
-        #     try:
-        #         df = pd.read_csv(txt_file, usecols=[0, 1, 2, 3, 4, 5, 6], header=None)
-        #         print(f"File {txt_file} loaded successfully with shape: {df.shape}")
-        #         dataframes.append(df)
-        #     except pd.errors.EmptyDataError:
-        #         print(f"File {txt_file} is empty or malformed.")
-        #     except Exception as e:
-        #         print(f"Error loading {txt_file}: {e}")
-    
-        # print(f"this is the data path: {data_path}")
-        # for txt_file in txt_files:
-        # dataframes = [pd.read_csv(file,
-        #                             usecols=[0,1,2,3,4,5,6], 
-        #                             header=None) for file in data_path]
-        # dataframes = []
-        # for file in txt_files:
-        #     # print(f"this is file: {file}")
-        #     df = pd.read_csv(file, usecols=[0,1,2,3,4,5,6], header=None)
-        #     dataframes.append(df)
-        # # print(f"This is df {df}")
         ground_truth_tracks = pd.read_csv(txt_file, usecols=[0,1,2,3,4,5,6], header=None)
 
              
@@ -82,6 +53,9 @@ class TrackDataloader():
         # set default column names
         ground_truth_tracks.columns = self.track_cols
 
+        if self.track_particle_id is not None:
+            ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["id"] == self.track_particle_id]
+        
         # remove invalid ground truth tracks 
         ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["valid"] == 1].drop(columns=["valid"])
 
@@ -97,42 +71,16 @@ class TrackDataloader():
             Outputs:
                 detections - Ground Truth Tracks DataFrame 
             """
-        # data_path = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
-        # print(f"data folder is: {data_path}")
               
         txt_file = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
 
-        # List to hold the DataFrames
-        # dataframes = []
-        
-        # Iterate over each txt file and attempt to read it
-        # for txt_file in txt_files:
-        #     print(f"Reading file: {txt_file}")
-        #     try:
-        #         df = pd.read_csv(txt_file, usecols=[0, 2, 3, 4, 5, 6], header=None)
-        #         print(f"File {txt_file} loaded successfully with shape: {df.shape}")
-        #         dataframes.append(df)
-        #     except pd.errors.EmptyDataError:
-        #         print(f"File {txt_file} is empty or malformed.")
-        #     except Exception as e:
-        #         print(f"Error loading {txt_file}: {e}")
-
-        # for txt_file in txt_files:
-        # dataframes = [pd.read_csv(file,
-        #                             usecols=[0,2,3,4,5,6], 
-        #                             header=None)for file in data_path]
         detections = pd.read_csv(txt_file, usecols=[0, 2, 3, 4, 5, 6], header=None)        # print(f"txt files are: {txt_files}")
 
-        # detections = pd.concat(dataframes, ignore_index=True)
-
-        # detections = pd.read_csv(os.path.join(data_folder, "*.txt"),
-        #     # "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt",
-        #                                             # (os.path.join(data_folder, 
-        #                                             #    , "det/det.txt"), 
-        #                          usecols=[0,2,3,4,5,6], 
-        #                          header=None)
-
         detections.columns = self.detect_cols
+
+        if self.track_particle_id is not None:
+            detections = detections[detections["frame"].isin(
+                self.get_gt_tracks(datafolder, color)["frame"])]
 
         # scale confidence to 0-1
         detections.conf = (detections.conf - detections.conf.min()) \
@@ -149,30 +97,16 @@ class TrackDataloader():
             Outputs:
                 detections - Ground Truth Tracks DataFrame 
             """
-        # data_path = "/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3"
 
         txt_file = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
-
-        # for txt_file in txt_files:
-        # dataframes = [pd.read_csv(file,
-        #                                   usecols=[0,2,3,4,5,6], 
-        #                                   header=None)for file in data_path]
-             
-        # gt_data = pd.concat(dataframes, ignore_index=True)
+  
         gt_data = pd.read_csv(txt_file, usecols=[0,2,3,4,5,6], header=None) 
-        #                          
-        # gt_data = pd.read_csv(os.path.join(data_folder, "*.txt"),
-        # # pd.read_csv("/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3/rods_df_black_modified.txt", 
-        #                          usecols=[0,2,3,4,5,6], 
-        #                          header=None)
-
+      
         gt_data.columns = self.track_cols_data
 
-        # if gt_data.iloc[:, 11].isnull().any():
-        #     print("NaN values found in column 11 of ground truth data")
-
-        # gt_data.iloc[:, 11] = gt_data.iloc[:, 11].fillna(0)
- 
+        if self.track_particle_id is not None:
+            gt_data = gt_data[gt_data["frame"].isin(
+                self.get_gt_tracks(datafolder, color)["frame"])]
 
         # scale confidence to 0-1
         gt_data.conf = 1
