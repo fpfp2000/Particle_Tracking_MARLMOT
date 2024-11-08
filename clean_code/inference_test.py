@@ -32,7 +32,7 @@ def get_args():
                         default=os.path.join(DIR_PATH, r"inference_particles/SORT_tracks"))
 
     parser.add_argument("--idx", dest="idx", type=int, default=0)
-    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.3) #0.3)
+    parser.add_argument("--iou_threshold", dest="iou_threshold", type=float, default=0.1) #0.3)
     parser.add_argument("--min_age", dest="min_age", type=int, default=1)
     parser.add_argument("--video", dest="video", type=bool, choices=[True, False], default=True)
     parser.add_argument("--mode", dest="mode", type=str, choices=["train", "test"], default="train")
@@ -134,9 +134,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
                            detections=detections,
                            gt_data=gt_data,
                            frame_size=frame_size,
-                           frame_paths=frame_paths,
-                           target_particle_id=target_particle_id
-                        )
+                           frame_paths=frame_paths)                     
 
         # initialize episode rewards list 
         # ep_rewards = []
@@ -421,7 +419,7 @@ if __name__ == "__main__":
     mode = args.mode
     device = args.device
 
-    target_particle_id = 1
+    target_particle_id = 7
 
     # Colors to loop through
     colors = ["black", "blue", "brown", "green", "orange", "purple", "red", "yellow"]
@@ -500,8 +498,7 @@ if __name__ == "__main__":
                               ground_truth=ground_truth, 
                               gt_data=gt_data, 
                               frame_size=frame_size, 
-                              frame_paths=frame_paths,
-                              target_particle_id=target_particle_id)
+                              frame_paths=frame_paths)
 
          # Take initial step to get first observations
          # observations, _, _ = world.step({})

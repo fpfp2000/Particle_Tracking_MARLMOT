@@ -53,11 +53,12 @@ class TrackDataloader():
         # set default column names
         ground_truth_tracks.columns = self.track_cols
 
+        # remove invalid ground truth tracks 
+        ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["valid"] == 1].drop(columns=["valid"])
+
         if self.track_particle_id is not None:
             ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["id"] == self.track_particle_id]
         
-        # remove invalid ground truth tracks 
-        ground_truth_tracks = ground_truth_tracks[ground_truth_tracks["valid"] == 1].drop(columns=["valid"])
 
         return ground_truth_tracks
     
@@ -77,10 +78,6 @@ class TrackDataloader():
         detections = pd.read_csv(txt_file, usecols=[0, 2, 3, 4, 5, 6], header=None)        # print(f"txt files are: {txt_files}")
 
         detections.columns = self.detect_cols
-
-        if self.track_particle_id is not None:
-            detections = detections[detections["frame"].isin(
-                self.get_gt_tracks(datafolder, color)["frame"])]
 
         # scale confidence to 0-1
         detections.conf = (detections.conf - detections.conf.min()) \
@@ -104,10 +101,6 @@ class TrackDataloader():
       
         gt_data.columns = self.track_cols_data
 
-        if self.track_particle_id is not None:
-            gt_data = gt_data[gt_data["frame"].isin(
-                self.get_gt_tracks(datafolder, color)["frame"])]
-
         # scale confidence to 0-1
         gt_data.conf = 1
         # (gt_data.conf - gt_data.conf.min()) \
@@ -130,10 +123,6 @@ class TrackDataloader():
         height, width, _ = img.shape
         frame_size = (height, width)
 
-        # config = configparser.ConfigParser()
-        # config.read(os.path.join(data_folder, "seqinfo.ini"))
-        # frame_size = (int(config.get("Sequence", "imHeight")), # num rows 
-        #               int(config.get("Sequence", "imWidth")))  # num cols
         return frame_size
     
 

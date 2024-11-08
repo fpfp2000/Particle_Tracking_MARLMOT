@@ -201,35 +201,37 @@ class Obstacle():
             Useful when the motion model fails.
             Inputs: box - (bounding box coordinates (x1, y1, x2, y2))
             """
-        # define constant velocity model
-        self.kf = KalmanFilter(dim_x=7, dim_z=4) 
-        self.kf.F = np.array ([[1, 0, 0, 0, 0.5, 0, 0],
-                      [0, 1, 0, 0, 0, 0.5, 0],
-                      [0, 0, 1, 0, 0, 0, 0.5],
-                      [0, 0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, 0, 1, 0, 0],
-                      [0, 0, 0, 0, 0, 1, 0],
-                      [0, 0, 0, 0, 0, 0, 1]])
-        # ([[1,0,0,0,1,0,0],
-        #                       [0,1,0,0,0,1,0],
-        #                       [0,0,1,0,0,0,1],
-        #                       [0,0,0,1,0,0,0],
-        #                       [0,0,0,0,1,0,0],
-        #                       [0,0,0,0,0,1,0],
-        #                       [0,0,0,0,0,0,1]])
+        # initialize obstacles without kalman filter
+        self.detection = convert_bbox_to_z(box)
+        # # define constant velocity model
+        # self.kf = KalmanFilter(dim_x=7, dim_z=4) 
+        # self.kf.F = np.array ([[1, 0, 0, 0, 0.5, 0, 0],
+        #               [0, 1, 0, 0, 0, 0.5, 0],
+        #               [0, 0, 1, 0, 0, 0, 0.5],
+        #               [0, 0, 0, 1, 0, 0, 0],
+        #               [0, 0, 0, 0, 1, 0, 0],
+        #               [0, 0, 0, 0, 0, 1, 0],
+        #               [0, 0, 0, 0, 0, 0, 1]])
+        # # ([[1,0,0,0,1,0,0],
+        # #                       [0,1,0,0,0,1,0],
+        # #                       [0,0,1,0,0,0,1],
+        # #                       [0,0,0,1,0,0,0],
+        # #                       [0,0,0,0,1,0,0],
+        # #                       [0,0,0,0,0,1,0],
+        # #                       [0,0,0,0,0,0,1]])
         
-        self.kf.H = np.array([[1,0,0,0,0,0,0],
-                              [0,1,0,0,0,0,0],
-                              [0,0,1,0,0,0,0],
-                              [0,0,0,1,0,0,0]])
+        # self.kf.H = np.array([[1,0,0,0,0,0,0],
+        #                       [0,1,0,0,0,0,0],
+        #                       [0,0,1,0,0,0,0],
+        #                       [0,0,0,1,0,0,0]])
 
-        self.kf.R[2:,2:] *= 5 #10.
-        self.kf.P[4:,4:] *= 500 #1000. #give high uncertainty to the unobservable initial velocities
-        self.kf.P *= 5 #10.
-        self.kf.Q[-1,-1] *= 0.05 #0.01
-        self.kf.Q[4:,4:] *= 0.05 #0.01
-        # get initial state
-        self.kf.x[:4] = convert_bbox_to_z(box)
+        # self.kf.R[2:,2:] *= 5 #10.
+        # self.kf.P[4:,4:] *= 500 #1000. #give high uncertainty to the unobservable initial velocities
+        # self.kf.P *= 5 #10.
+        # self.kf.Q[-1,-1] *= 0.05 #0.01
+        # self.kf.Q[4:,4:] *= 0.05 #0.01
+        # # get initial state
+        # self.kf.x[:4] = convert_bbox_to_z(box)
 
     def update(self, box):
         """ Updates the Kalman Filter
@@ -238,30 +240,50 @@ class Obstacle():
         self.history = []
         self.hits += 1
         self.hit_streak += 1
-        self.kf.update(convert_bbox_to_z(box))
+        # self.kf.update(convert_bbox_to_z(box))
+        self.detection = convert_bbox_to_z(box)
+
 
     def predict(self):
         """ Advances the state vector and returns the predicted 
             bounding box estimate.
             """
-        if((self.kf.x[6]+self.kf.x[2])<=0):
-            self.kf.x[6] *= 0.0
-        self.kf.predict()
         self.age += 1
-        if(self.time_since_update > 0):
-            self.hit_streak = 0
         self.time_since_update += 1
-        self.history.append(convert_x_to_bbox(self.kf.x))
+        # returning the last known bounding box instead of using Kalman prediction
+        if self.detection is not None:
+            self.history.append(convert_x_to_bbox(self.detection[:4]))
         return self.history[-1]
+    
+        # if((self.kf.x[6]+self.kf.x[2])<=0):
+        #     self.kf.x[6] *= 0.0
+        # self.kf.predict()
+        # self.age += 1
+        # if(self.time_since_update > 0):
+        #     self.hit_streak = 0
+        # self.time_since_update += 1
+        # self.history.append(convert_x_to_bbox(self.kf.x))
+        # return self.history[-1]
 
     def get_state(self):
         """ Returns the current bounding box estimate. """
-        return convert_x_to_bbox(self.kf.x)
+        # return convert_x_to_bbox(self.kf.x)
+        if self.detection is not None:
+            return convert_x_to_bbox(self.detection[:4])
+        else:
+            # Default to the original box if no new detection is available
+            return convert_bbox_to_z([0, 0, 0, 0]) 
     
     def update_observation(self):
         """ Obtains current observation for track management """
-        self.observation[0:7] = self.kf.x 
-        self.observation[7:13] = self.detection
+        # self.observation[0:7] = self.kf.x 
+        # self.observation[7:13] = self.detection
+
+        # updating the observation by using bounding box info
+        if self.detection is not None:
+            self.observation[0:4] = self.detection[0:4] 
+            self.observation[7:13] = self.detection
+
 
         # update 1 hot encoded track mode
         if self.track_mode == 0:
@@ -283,7 +305,7 @@ class Obstacle():
 
 
 class HungarianTracker():
-    def __init__(self, iou_threshold=0.3, min_age=1):
+    def __init__(self, iou_threshold=0.1, min_age=1):
         """ Tracks obstacle objects with Hungarian association to 
             args:
                 iou_threshold - min threshold needed to perform IOU association
