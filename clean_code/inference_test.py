@@ -37,42 +37,10 @@ def get_args():
     parser.add_argument("--video", dest="video", type=bool, choices=[True, False], default=True)
     parser.add_argument("--mode", dest="mode", type=str, choices=["train", "test"], default="train")
     parser.add_argument("--device", dest="device", type=str, choices=["cuda", "cpu"], default=r"cpu")
-    
-    parser.add_argument("--target_particle_id", dest="target_particle_id", type=int, default=None,
-                        help="ID of the target particle to track")
-
 
     args = parser.parse_args()
 
     return args
-
-def filter_particle_data(detections, ground_truth, target_particle_id):
-    # Filter the ground truth DataFrame to get only the rows with the target particle ID
-    target_gt = ground_truth[ground_truth["id"] == target_particle_id]
-
-    # Create an empty list to store filtered detections
-    filtered_detections = []
-
-    # Iterate over each frame in target_gt
-    for _, row in target_gt.iterrows():
-        frame_number = row["frame"]
-        bb_left = row["bb_left"]
-        bb_top = row["bb_top"]
-        bb_width = row["bb_width"]
-        bb_height = row["bb_height"]
-        conf = row.get("conf", 1)  # Default confidence to 1 if not available
-
-        # Find the detection in the same frame as the ground truth
-        detection_in_frame = detections[detections["frame"] == frame_number]
-
-        # Filter based on the bounding box from ground truth
-        if not detection_in_frame.empty:
-            filtered_detections.append([frame_number, bb_left, bb_top, bb_width, bb_height, conf])
-
-    # Convert to a DataFrame
-    filtered_detections_df = pd.DataFrame(filtered_detections, columns=detections.columns)
-
-    return filtered_detections_df
 
 def get_sort_actions(observations):
         """
@@ -198,12 +166,14 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT, da
     # display metrics
     # print("batch length: ", batch_len)
     # print("MOTA: ", mota)
+    print(frames)
 
     # saving SORT frmes
     frames_dir = os.path.join(savepath_SORT, dataloader.current_video + "_frames")
     os.makedirs(frames_dir, exist_ok=True)
 
     for frame_count, frame in enumerate(frames):
+        print(frame)
         frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
         cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -334,13 +304,12 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
     # Take the initial step to get the initial observations
     observations, _, _ = world.step({})
 
-    frame_count = 0
+    frame_count = 1
     # iterating over all frames
     while frame_count < len(frame_paths):
-                
-        # frame_path = frame_paths[world.frame - 1]
-        frame_path = frame_paths[frame_count]
-        # print(f"Processing frame {frame_count} from {frame_path}")
+        
+        frame_path = frame_paths[world.frame - 1]
+        # frame_path = frame_paths[frame_count]
 
         if len(observations) > 0:
             obs_list = list(observations.values())
@@ -354,12 +323,17 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
         actions, logprobs = ppo.get_actions(observations)
         # step froward with MARLMOT actions
         observations, _, _ = world.step(actions)
+
         # Draw MARLMOT tracks
         frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
                                             cv2.COLOR_BGR2RGB), 
                                             world.current_tracks)
 
+        # print(f"Frame {frame_count}: Bounding boxes generated - {len(world.current_tracks)}")
 
+        # if len(world.current_tracks) == 0:
+        #     print(f"Warning: No bounding boxes for MARLMOT Frame {frame_count}")
+        
         # Save frames
         frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
         # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
@@ -389,6 +363,7 @@ def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, mi
     
     frame_count = 0
     while frame_count < len(frame_paths):
+
         frame_filename = os.path.join(frames_dir_sort, f"frame_{frame_count:04d}.png")
 
         if frame_count < len(frames):
@@ -461,8 +436,8 @@ if __name__ == "__main__":
         os.makedirs(frames_dir_3, exist_ok=True)
 
         # getting paths to image frames
-        frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
-        
+        frame_paths = dataloader.get_frame_paths(dataloader.img_path)
+
         # gathering ground truth boxes
         ground_truth_bboxes = load_ground_truth(datafolder, color)
         # gathering ground truth bounding boxes and adding them on the frames
@@ -475,12 +450,6 @@ if __name__ == "__main__":
             # Get inference data
             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color) 
 
-            # Define target_particle_id
-            target_particle_id = 1  # Replace with the specific ID you want to track
-
-            # Use the filtering function to filter out the desired particle detections and ground truth
-            detections_filtered = filter_particle_data(detections, ground_truth, target_particle_id)
-            detections_filtered.loc[:, "conf"] = detections_filtered["conf"].fillna(1) 
 
             # changing NaN with 1
             # detections.loc[:, "conf"] = detections["conf"].fillna(1) 
