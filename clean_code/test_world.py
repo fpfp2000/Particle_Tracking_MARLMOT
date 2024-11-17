@@ -125,7 +125,7 @@ class TestWorld():
             # print(f"Ground truth data for frame {adjusted_frame_num}")
             gt_data = np.empty((0, 6))
 
-
+        self.current_tracks = []
         # update/associate current tracklets from tracker
         if gt == False: 
             self.current_tracks = self.tracker.update(detections)
@@ -135,6 +135,7 @@ class TestWorld():
 
         # get ground truth tracks 
         self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == adjusted_frame_num, :]
+        
         
         # increment frame number
         self.frame += 1
@@ -285,7 +286,8 @@ class TestWorld():
 
         # subtract 1 since frame count is incremented in update_current_tracks
         # subtract 1 allows for final observations before batch loop exit
-        if self.detections.frame.max() == (self.frame - 1):
+        # if self.detections.frame.max() == (self.frame - 1):
+        if self.frame >= self.detections.frame.max():    
             done = True
 
         return observations, rewards, done

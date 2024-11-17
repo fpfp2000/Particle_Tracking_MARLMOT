@@ -139,18 +139,65 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
             # if world.frame - 1 < 0 or world.frame - 1 >= len(world.frame_paths):
             #     # print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
             #     break
+            
 
-            frame_idx = world.frame - 1
-            if 0 <= frame_idx < len(world.frame_paths):
-            # Draw SORT tracks on the current frame
+            frame_idx = world.frame - 2       
+            
+            if 0 <= frame_idx < len(world.frame_paths):      
+                print(f"processing SORT on frame {frame_idx} with file path: {world.frame_paths[frame_idx]}")
+                # print(f"Current bounding boxes for frame {frame_idx}: {[track.get_state()[0] for track in world.current_tracks]}")
+                detections = world.detections[world.detections.frame == (frame_idx + 500)]
+
+            # # Draw SORT tracks on the current frame
+                # world.current_tracks = tracker.update(detections.to_numpy())
                 frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[frame_idx]), cv2.COLOR_BGR2RGB), world.current_tracks)
                 frames.append(frame)
+            
+            frame_idx += 1
+            # # resetting tracks for each frame
+            world.current_tracks = []
+
+            # if 0 <= frame_idx < len(world.frame_paths):
+            #     # Handle last frame detections
+            #     if frame_idx == len(world.frame_paths) - 1:  # Special case for last frame
+            #         last_frame_detections = world.detections[world.detections.frame == (frame_idx + 500)]
+
+            #         if last_frame_detections.empty:
+            #             print("No detections for the last frame. Generating dummy detection.")
+            #             last_frame_detections = np.array([[0, 0, 10, 10, 0, 1]])  # Dummy detection
+            #         else:
+            #             last_frame_detections = last_frame_detections.to_numpy()
+
+            #         # Update tracks for the last frame
+            #         world.current_tracks = tracker.update(last_frame_detections)
+
+            #     # Draw SORT tracks on the current frame
+            #     frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[frame_idx]), cv2.COLOR_BGR2RGB), world.current_tracks)
+            #     frames.append(frame)
+
+            #     # Reset current tracks AFTER drawing the frame
+            #     world.current_tracks = []
+        
+        if world.frame - 1 == len(world.frame_paths) - 1:
+            frame_idx = world.frame - 1
+            # last_frame_detections = np.empty((0,6))
+
+            last_frame_detections = world.detections[world.detections.frame == (frame_idx + 500)]
+            
+            if last_frame_detections.empty():
+                print(f"Warning no detections for the last frame {frame_idx}")
+            else:
+                print(f"Last frame detections: \n{last_frame_detections}")
+            
+            world.current_tracks = tracker.update(last_frame_detections)
+            frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[frame_idx]), cv2.COLOR_BGR2RGB), world.current_tracks)
+            frames.append(frame)
 
     metrics = (len(batch_obs))
 
     return metrics, frames, done
 
-
+ 
 def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT, datafolder, color):
     """ Special function to evaluate the results of SORT on a given dataset """
     # print("Obtaining SORT batch rollouts...")
@@ -304,7 +351,7 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
     # Take the initial step to get the initial observations
     observations, _, _ = world.step({})
 
-    frame_count = 1
+    frame_count = 0
     # iterating over all frames
     while frame_count < len(frame_paths):
         
@@ -365,7 +412,7 @@ def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, mi
     while frame_count < len(frame_paths):
 
         frame_filename = os.path.join(frames_dir_sort, f"frame_{frame_count:04d}.png")
-
+        
         if frame_count < len(frames):
             frame = frames[frame_count]
             cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
