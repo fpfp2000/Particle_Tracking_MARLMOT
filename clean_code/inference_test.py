@@ -144,7 +144,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
             frame_idx = world.frame - 2       
             
             if 0 <= frame_idx < len(world.frame_paths):      
-                print(f"processing SORT on frame {frame_idx} with file path: {world.frame_paths[frame_idx]}")
+                # print(f"processing SORT on frame {frame_idx} with file path: {world.frame_paths[frame_idx]}")
                 # print(f"Current bounding boxes for frame {frame_idx}: {[track.get_state()[0] for track in world.current_tracks]}")
                 detections = world.detections[world.detections.frame == (frame_idx + 500)]
 
