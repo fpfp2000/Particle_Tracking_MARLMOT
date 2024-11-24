@@ -7,6 +7,7 @@
 
 import numpy as np
 import pandas as pd
+# from track_utils import *
 from track_utils import *
 
 
@@ -234,6 +235,8 @@ class TrainWorld():
 
             # track ID maps to observation
             observations.update({track.id : obs})
+        
+        # print(f"obs from train world: {observations}")
 
         return observations
     
