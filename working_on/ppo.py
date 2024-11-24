@@ -14,13 +14,13 @@ import torch.nn as nn
 from torch.distributions.categorical import Categorical
 
 # import track utils
-from track_utils import *
+from track_utils_particles import *
 
 
 
 class PPO():
     def __init__(self, dataloader, env, policy_model, epochs, num_train_iters=4, 
-                 lr=1e-4, gamma=0.95, eps=0.2, iou_threshold=0.3, min_age=3, 
+                 lr=1e-4, gamma=0.95, eps=0.2, iou_threshold=0.1, min_age=1, #3, 
                  device=None, checkpoint=50, obs_dim=18, action_dim=5):
         """
             Custom Class for Proximal Policy Optimization for MARLMOT
@@ -111,6 +111,9 @@ class PPO():
             # compute batch rollouts/episodes/trajectories 
             batch_obs, batch_acts, batch_log_probs, batch_rtgs = self.batch_rollout()
             
+            # if batch_obs.size == 0:
+            #     raise ValueError("Error: batch_obs is empty!")
+
             ## STEP 5 compute advantages
             V, _ = self.compute_value(batch_obs, batch_acts)
 
@@ -211,6 +214,9 @@ class PPO():
                 Note: The length of 'N' will change on each iteration based on the actions
                     taken by the agent. 
         """
+
+        print("Starting batch_rollout")
+
         batch_obs = []
         batch_actions = []
         batch_logprobs = []
@@ -224,15 +230,21 @@ class PPO():
         cost_penalties = 0
         total_num_tracks = 0 # total number of gt tracks for all frames
 
-        for (ground_truth, detections, frame_size) in self.dataloader:
-            
+        
+        
+
+        for (ground_truth, detections, gt_data, gt_tracks, frame_size) in self.dataloader:
+           
             # initialize world object to collect rollouts
             tracker = HungarianTracker(iou_threshold=self.iou_threshold, 
                                        min_age=self.min_age)
             world = self.env(tracker=tracker, 
                              ground_truth=ground_truth, 
                              detections=detections,
+                            #  gt_data=gt_data,
+                            #  gt_tracks=gt_tracks,
                              frame_size=frame_size)
+            
 
             # initialize episode rewards list
             ep_rewards = []
@@ -242,6 +254,10 @@ class PPO():
 
             # take initial step to get first observations
             observations, _, _ = world.step({})
+
+            if not observations: 
+                print("Error Observations are empty after the world.step")
+                
 
             # collect (S, A, R) trajectory for entire video
             while True:    
@@ -253,6 +269,11 @@ class PPO():
                 actions, logprobs = self.get_actions(observations)
                 # get rewards and new observations
                 observations, rewards, done = world.step(actions)
+
+                if not observations:
+                    print("Error Observations are empty after the world step")
+                    
+
 
                 # get metrics
                 num_false_positives += len(world.false_positives)
@@ -278,9 +299,13 @@ class PPO():
         action_ratios = np.zeros((5,))
         unique_actions, action_counts = np.unique(batch_actions, 
                                                   return_counts=True)
+        unique_actions = unique_actions.astype(int)
         action_ratios[unique_actions] = action_counts/len(batch_actions)
 
-        mota = 1 - ((num_false_positives 
+        if total_num_tracks == 0:
+            mota = 1
+        else:
+            mota = 1 - ((num_false_positives 
                      + num_false_negatives 
                      + num_mismatch_errrors)) / total_num_tracks
 
@@ -427,8 +452,8 @@ class PPO():
                     updates.
         """
         # compute values for batch observations
+        # print(f"Batch obs: {batch_obs}")
         V = self.critic(batch_obs).squeeze()
-
         # get a sample of logprobs from the batch actions
         logits = self.actor(batch_obs)
         dist = Categorical(logits=logits)
