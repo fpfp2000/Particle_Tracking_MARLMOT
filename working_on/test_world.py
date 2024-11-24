@@ -4,11 +4,13 @@
 
 import numpy as np
 import pandas as pd
-from track_utils import *
+# from track_utils import *
+from track_utils_particles import *
+
 
 
 class TestWorld():
-    def __init__(self, tracker, detections, frame_size):
+    def __init__(self, tracker, detections, gt_data, frame_size, ground_truth, frame_paths):
         """ Training World for visual Tracking. The ground_truth and detections
             correspond to a single video of tracks and detections.
             Args:
@@ -22,10 +24,19 @@ class TestWorld():
             """
         self.tracker = tracker   # tracker class
         self.detections = detections # DataFrame of detections for offline training
+        self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
-
+        ########################################################################################## I MADE AN EDIT HERE
+        self.frame_paths = frame_paths
+        self.truth_tracks = [] # current truth tracks 
+        self.truth_bboxes = [] # current truth bboxes
+        self.ground_truth = ground_truth # ground truth DataFrame
+        ########################################################################################## I MADE AN EDIT HERE
+        # print(f"Initialized ground_truth: {self.ground_truth}")
+        # print(f"Initialized detections: {self.detections}")
+        
         self.frame = 0 # current frame index
-        self.current_tracks = {} # confirmed tracks
+        self.current_tracks = [] # confirmed tracks
 
         # ensure that the Tracker is reset
         self.tracker.reset()
@@ -49,22 +60,86 @@ class TestWorld():
                           np.c_[detections.iloc[:, 5].to_numpy()]))
     
 
-    def update_current_tracks(self):
+########################################################################################## I MADE AN EDIT HERE
+    @staticmethod
+    def _get_gt_bboxes(gt_data):
+        """ Obtains Detection bboxes and confidence 
+            Inputs:
+                detections - DataFrame of detections at current frame
+            Outputs:
+                detections - (Nx5) array of detections in the form of:
+                    (x1, y1, x2, y2, category, confidence)
+                    (left, top, right, bottom, category, confidence)
+            """
+        pt1 = gt_data.iloc[:, 1:3].to_numpy().astype(int)
+        pt2 = pt1 + gt_data.iloc[:, 3:5].to_numpy().round().astype(int)
+
+        return np.hstack((pt1, 
+                          pt2, 
+                          np.zeros((len(pt1), 1)), # category defaults to 0 for training
+                          np.c_[gt_data.iloc[:, 5].to_numpy()]))
+########################################################################################## I MADE AN EDIT HERE
+
+######################################################################################### I MADE AN EDIT HERE
+    def _update_gt_bboxes(self):
+        """ Update Ground Truth bboxes """
+        gt_bbox = []
+        # draw ground truth on frame
+        for id in self.truth_tracks.id:
+            track = self.truth_tracks[self.truth_tracks.id == id]
+            pt1 = track.iloc[0, 2:4].to_numpy().astype(int)
+            pt2 = pt1 + track.iloc[0, 4:6].to_numpy().round().astype(int)
+            gt_bbox.append([pt1[0], pt1[1], pt2[0], pt2[1]])
+
+        # convert to array
+        self.truth_bboxes = np.array(gt_bbox)
+######################################################################################### I MADE AN EDIT HERE
+
+    def update_current_tracks(self, gt = True):
         """ Update tracks for current frame """
 
+########################################################################################## I MADE AN EDIT HERE
         # get all detections at current frame
-        detections = self.detections[self.detections.frame == self.frame]
+
+        adjusted_frame_num = self.frame + 500
+
+        detections = self.detections[self.detections.frame == adjusted_frame_num]
+        # replacing NaN values with 1
+        detections.loc[:, "conf"] = detections["conf"].fillna(1) 
+
+        gt_data = self.gt_data[self.gt_data.frame == adjusted_frame_num]
+
+        # print(f"Adjusted frame number: {adjusted_frame_num}")
+        # print(f"Detections for frame {adjusted_frame_num}: {detections}")
+        # print(f"Ground truth data for frame {adjusted_frame_num}: {gt_data}")
 
         if not detections.empty:
             detections = self._get_detection_bboxes(detections)
         else:
+            # print(f"Detections for frame {adjusted_frame_num}")
             detections = np.empty((0, 6))
 
+        if not gt_data.empty:
+            gt_data = self._get_gt_bboxes(gt_data)
+        else:
+            # print(f"Ground truth data for frame {adjusted_frame_num}")
+            gt_data = np.empty((0, 6))
+
+        self.current_tracks = []
         # update/associate current tracklets from tracker
-        self.current_tracks = self.tracker.update(detections)
+        if gt == False: 
+            self.current_tracks = self.tracker.update(detections)
+        else:
+            self.current_tracks = self.tracker.update(gt_data)
+    
+
+        # get ground truth tracks 
+        self.truth_tracks = self.ground_truth.loc[self.ground_truth.frame == adjusted_frame_num, :]
+        
         
         # increment frame number
         self.frame += 1
+########################################################################################## I MADE AN EDIT HERE
 
 
     def get_observations(self):
@@ -78,7 +153,7 @@ class TestWorld():
         for track in self.current_tracks:
             obs = track.observation
 
-             # normalize obsrvations
+            # normalize obsrvations
             obs[0] /= self.frame_size[1] # xpos
             obs[1] /= self.frame_size[0] # ypos
             obs[2] /= area_norm # area
@@ -93,8 +168,18 @@ class TestWorld():
             obs[16] = sigmoid(obs[16] - 3) # frames since last association
             obs[17] = sigmoid(obs[17] - 3) # hit streak
 
+            # making sure observation is a column vector 
+            obs = obs.reshape(18, 1)
+
             # track ID maps to observation
             observations.update({track.id : obs})
+        
+        # # to make sure observations are in the correct format 
+        # obs_list = list(observations.values())
+        # obs_array = np.array(obs_list).squeeze()
+
+        # if obs_array.ndim == 1:
+        #     obs_array = obs_array[np.newaxis, :]
 
         return observations
     
@@ -192,23 +277,28 @@ class TestWorld():
         done = False
 
         # get detections and update current tracks for each frame
-        self.update_current_tracks()
+        self.update_current_tracks(gt=True)
 
         # get observations
         observations = self.get_observations()
+        rewards = {}
+        # self._update_gt_bboxes()
 
         # subtract 1 since frame count is incremented in update_current_tracks
         # subtract 1 allows for final observations before batch loop exit
-        if self.detections.frame.max() == (self.frame - 1):
+        # if self.detections.frame.max() == (self.frame - 1):
+        if self.frame >= self.detections.frame.max():    
             done = True
 
-        return observations,  done
+        return observations, rewards, done
     
 
     def reset(self):
         """ Resets everything and returns an observation """
         self.frame = 0 # current frame index
         self.current_tracks = {} # confirmed tracks
+        self.truth_bboxes = []
+        self.truth_tracks = []
 
         # ensure that the Tracker is reset
         self.tracker.reset()
