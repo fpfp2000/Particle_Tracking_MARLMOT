@@ -113,11 +113,11 @@ class TestWorld():
         # print(f"Detections for frame {adjusted_frame_num}: {detections}")
         # print(f"Ground truth data for frame {adjusted_frame_num}: {gt_data}")
 
-        if not detections.empty:
-            detections = self._get_detection_bboxes(detections)
-        else:
+        # if not detections.empty:
+        detections = self._get_detection_bboxes(detections)
+        # else:
             # print(f"Detections for frame {adjusted_frame_num}")
-            detections = np.empty((0, 6))
+            # detections = np.empty((0, 6))
 
         if not gt_data.empty:
             gt_data = self._get_gt_bboxes(gt_data)
@@ -271,7 +271,7 @@ class TestWorld():
                 done - (Bool) indicates whether the current video is complete
             """
         # implement actions (updates current tracks)
-        if len(actions) > 0:
+        if len(actions) >= 0:
             self.take_actions(actions)
 
         done = False

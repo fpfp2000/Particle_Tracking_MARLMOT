@@ -359,7 +359,7 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
         frame_path = frame_paths[world.frame - 1]
         # frame_path = frame_paths[frame_count]
 
-        if len(observations) > 0:
+        if len(observations) >= 0:
             obs_list = list(observations.values())
             obs_tensor = torch.tensor(np.array(obs_list).squeeze(), dtype=torch.float32).to(device)
             if obs_tensor.ndimension() == 1:
@@ -370,7 +370,7 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
         # Get MARLMOT predictions
         actions, logprobs = ppo.get_actions(observations)
         # step froward with MARLMOT actions
-        observations, _, _ = world.step(actions)
+        observations, rewards, done = world.step(actions)
 
         # Draw MARLMOT tracks
         frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
