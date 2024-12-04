@@ -9,9 +9,9 @@ import os
 import time
 import argparse
 from train_world import TrainWorld
-from dataloader_particles import TrackDataloader
-from network_particles import Net
-from ppo_particles import PPO
+from dataloader import TrackDataloader
+from network import Net
+from ppo import PPO
 
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
