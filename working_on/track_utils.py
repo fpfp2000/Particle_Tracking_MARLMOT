@@ -1,3 +1,4 @@
+
 """
     Utility functions for MARLMOT
 """
@@ -251,6 +252,7 @@ class Obstacle():
         self.age += 1
         self.time_since_update += 1
         # returning the last known bounding box instead of using Kalman prediction
+        
         if self.detection is not None:
             self.history.append(convert_x_to_bbox(self.detection[:4]))
         return self.history[-1]
