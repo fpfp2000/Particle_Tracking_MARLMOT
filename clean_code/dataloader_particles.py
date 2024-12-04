@@ -103,9 +103,7 @@ class TrackDataloader():
 
         # scale confidence to 0-1
         gt_data.conf = 1
-        # (gt_data.conf - gt_data.conf.min()) \
-        #                   / (gt_data.conf.max() - gt_data.conf.min())
-
+      
         return gt_data
 
     @staticmethod

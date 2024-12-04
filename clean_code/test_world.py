@@ -26,14 +26,11 @@ class TestWorld():
         self.detections = detections # DataFrame of detections for offline training
         self.gt_data = gt_data
         self.frame_size = frame_size # frame size (num_rows, num_cols)
-        ########################################################################################## I MADE AN EDIT HERE
         self.frame_paths = frame_paths
         self.truth_tracks = [] # current truth tracks 
         self.truth_bboxes = [] # current truth bboxes
         self.ground_truth = ground_truth # ground truth DataFrame
-        ########################################################################################## I MADE AN EDIT HERE
-        # print(f"Initialized ground_truth: {self.ground_truth}")
-        # print(f"Initialized detections: {self.detections}")
+
         
         self.frame = 0 # current frame index
         self.current_tracks = [] # confirmed tracks
@@ -60,7 +57,6 @@ class TestWorld():
                           np.c_[detections.iloc[:, 5].to_numpy()]))
     
 
-########################################################################################## I MADE AN EDIT HERE
     @staticmethod
     def _get_gt_bboxes(gt_data):
         """ Obtains Detection bboxes and confidence 
@@ -78,9 +74,7 @@ class TestWorld():
                           pt2, 
                           np.zeros((len(pt1), 1)), # category defaults to 0 for training
                           np.c_[gt_data.iloc[:, 5].to_numpy()]))
-########################################################################################## I MADE AN EDIT HERE
-
-######################################################################################### I MADE AN EDIT HERE
+    
     def _update_gt_bboxes(self):
         """ Update Ground Truth bboxes """
         gt_bbox = []
@@ -93,12 +87,10 @@ class TestWorld():
 
         # convert to array
         self.truth_bboxes = np.array(gt_bbox)
-######################################################################################### I MADE AN EDIT HERE
 
     def update_current_tracks(self, gt = True):
         """ Update tracks for current frame """
 
-########################################################################################## I MADE AN EDIT HERE
         # get all detections at current frame
 
         adjusted_frame_num = self.frame + 500
@@ -109,20 +101,12 @@ class TestWorld():
 
         gt_data = self.gt_data[self.gt_data.frame == adjusted_frame_num]
 
-        # print(f"Adjusted frame number: {adjusted_frame_num}")
-        # print(f"Detections for frame {adjusted_frame_num}: {detections}")
-        # print(f"Ground truth data for frame {adjusted_frame_num}: {gt_data}")
 
-        # if not detections.empty:
         detections = self._get_detection_bboxes(detections)
-        # else:
-            # print(f"Detections for frame {adjusted_frame_num}")
-            # detections = np.empty((0, 6))
-
+    
         if not gt_data.empty:
             gt_data = self._get_gt_bboxes(gt_data)
         else:
-            # print(f"Ground truth data for frame {adjusted_frame_num}")
             gt_data = np.empty((0, 6))
 
         self.current_tracks = []
@@ -139,8 +123,6 @@ class TestWorld():
         
         # increment frame number
         self.frame += 1
-########################################################################################## I MADE AN EDIT HERE
-
 
     def get_observations(self):
         """ Obtains a vector of all observations for the
@@ -173,13 +155,6 @@ class TestWorld():
 
             # track ID maps to observation
             observations.update({track.id : obs})
-        
-        # # to make sure observations are in the correct format 
-        # obs_list = list(observations.values())
-        # obs_array = np.array(obs_list).squeeze()
-
-        # if obs_array.ndim == 1:
-        #     obs_array = obs_array[np.newaxis, :]
 
         return observations
     
@@ -282,11 +257,9 @@ class TestWorld():
         # get observations
         observations = self.get_observations()
         rewards = {}
-        # self._update_gt_bboxes()
 
         # subtract 1 since frame count is incremented in update_current_tracks
         # subtract 1 allows for final observations before batch loop exit
-        # if self.detections.frame.max() == (self.frame - 1):
         if self.frame >= self.detections.frame.max():    
             done = True
 

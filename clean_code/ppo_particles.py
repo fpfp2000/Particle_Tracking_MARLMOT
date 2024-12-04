@@ -111,8 +111,6 @@ class PPO():
             # compute batch rollouts/episodes/trajectories 
             batch_obs, batch_acts, batch_log_probs, batch_rtgs = self.batch_rollout()
             
-            # if batch_obs.size == 0:
-            #     raise ValueError("Error: batch_obs is empty!")
 
             ## STEP 5 compute advantages
             V, _ = self.compute_value(batch_obs, batch_acts)
@@ -241,8 +239,6 @@ class PPO():
             world = self.env(tracker=tracker, 
                              ground_truth=ground_truth, 
                              detections=detections,
-                            #  gt_data=gt_data,
-                            #  gt_tracks=gt_tracks,
                              frame_size=frame_size)
             
 
@@ -452,7 +448,6 @@ class PPO():
                     updates.
         """
         # compute values for batch observations
-        # print(f"Batch obs: {batch_obs}")
         V = self.critic(batch_obs).squeeze()
         # get a sample of logprobs from the batch actions
         logits = self.actor(batch_obs)

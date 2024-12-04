@@ -33,6 +33,4 @@ class Net(nn.Module):
         x = F.elu(self.fc3(x))
         x = self.fc4(x)
 
-        # print(f"Logits: {x}")
-        # return logits and compute softmax with loss function?
         return x

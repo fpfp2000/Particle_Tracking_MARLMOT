@@ -130,27 +130,14 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
             batch_actions += list(actions.values())
             batch_logprobs += logprobs
 
-            # assume that tracks at each frame occur at the same time step
-            # ep_rewards.append(rewards) 
-
-            # debug
-            # print(f"world.frame: {world.frame}, len(frame_paths): {len(world.frame_paths)}")
-
-            # Ensuring frames are within bounds
-            # if world.frame - 1 < 0 or world.frame - 1 >= len(world.frame_paths):
-            #     # print(f"Frame index {world.frame - 1} is out of range for frame_paths with length {len(world.frame_paths)}")
-            #     break
-            
 
             frame_idx = world.frame - 2       
             
             if 0 <= frame_idx < len(world.frame_paths):      
-                # print(f"processing SORT on frame {frame_idx} with file path: {world.frame_paths[frame_idx]}")
-                # print(f"Current bounding boxes for frame {frame_idx}: {[track.get_state()[0] for track in world.current_tracks]}")
+               
                 detections = world.detections[world.detections.frame == (frame_idx + 500)]
 
-            # # Draw SORT tracks on the current frame
-                # world.current_tracks = tracker.update(detections.to_numpy())
+                # Draw SORT tracks on the current frame
                 frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[frame_idx]), cv2.COLOR_BGR2RGB), world.current_tracks)
                 frames.append(frame)
             
@@ -158,26 +145,6 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
             # # resetting tracks for each frame
             world.current_tracks = []
 
-            # if 0 <= frame_idx < len(world.frame_paths):
-            #     # Handle last frame detections
-            #     if frame_idx == len(world.frame_paths) - 1:  # Special case for last frame
-            #         last_frame_detections = world.detections[world.detections.frame == (frame_idx + 500)]
-
-            #         if last_frame_detections.empty:
-            #             print("No detections for the last frame. Generating dummy detection.")
-            #             last_frame_detections = np.array([[0, 0, 10, 10, 0, 1]])  # Dummy detection
-            #         else:
-            #             last_frame_detections = last_frame_detections.to_numpy()
-
-            #         # Update tracks for the last frame
-            #         world.current_tracks = tracker.update(last_frame_detections)
-
-            #     # Draw SORT tracks on the current frame
-            #     frame = draw_sort_tracks(cv2.cvtColor(cv2.imread(world.frame_paths[frame_idx]), cv2.COLOR_BGR2RGB), world.current_tracks)
-            #     frames.append(frame)
-
-            #     # Reset current tracks AFTER drawing the frame
-            #     world.current_tracks = []
         
         if world.frame - 1 == len(world.frame_paths) - 1:
             frame_idx = world.frame - 1
@@ -391,9 +358,6 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
 
         frame_count += 1
 
-        # if done:
-        #     print("Reached end of video frames.")
-        #     break
 
 def load_sort_bboxes(frame_paths, frames_dir_sort, dataloader, iou_threshold, min_age, datafolder, color):
     """
@@ -466,13 +430,7 @@ if __name__ == "__main__":
     ppo.actor = policy
 
     for color in colors:
-        print(f"Processing color: {color}")
-
-        # Use a new dataloader for each color
-        # data_folder = os.path.join(datafolder, f"rods_df_{color}_modified.txt")
-        # dataloader = TrackDataloader(data_folder, imgfolder, mode=mode)
-
-        
+        print(f"Processing color: {color}")    
         
         # Create folders for each color's results
         frames_dir = os.path.join(savepath, f"frames_{color}")
@@ -498,14 +456,6 @@ if __name__ == "__main__":
             # Get inference data
             ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color) 
 
-
-            # changing NaN with 1
-            # detections.loc[:, "conf"] = detections["conf"].fillna(1) 
-
-            # Get paths to image frames
-            # frame_paths = sorted(glob.glob(os.path.join(imgfolder, "*.jpg")))
-            # dataloader.get_frame_paths(dataloader.data_paths[idx])
-
             # Initialize world object to collect rollouts
             tracker = HungarianTracker(iou_threshold=iou_threshold, 
                                        min_age=min_age)
@@ -517,8 +467,6 @@ if __name__ == "__main__":
                               frame_size=frame_size, 
                               frame_paths=frame_paths)
 
-         # Take initial step to get first observations
-         # observations, _, _ = world.step({})
 
             load_marlmot_bboxes(frame_paths=frame_paths,
                             frames_dir=frames_dir,
