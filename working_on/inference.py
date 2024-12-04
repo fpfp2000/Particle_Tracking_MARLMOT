@@ -22,9 +22,9 @@ def get_args():
     parser.add_argument("--policy", dest="policy", type=str,
                         default=os.path.join(DIR_PATH, r"trained_models/actor_1498.pth"))
     parser.add_argument("--datafolder", dest="datafolder", type=str, 
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3")
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/csv_modified/gp3")
     parser.add_argument("--imgfolder", dest="imgfolder", type=str, 
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/images/gp3")
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/images/gp3")
     
     parser.add_argument("--savepath_2", dest="savepath_2", type=str,
                         default=os.path.join(DIR_PATH, r"inference_particles/truth_tracks"))
@@ -104,8 +104,6 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
                            frame_size=frame_size,
                            frame_paths=frame_paths)                     
 
-        # initialize episode rewards list 
-        # ep_rewards = []
 
         # accumulate total number of tracks
         total_num_tracks += len(ground_truth)
