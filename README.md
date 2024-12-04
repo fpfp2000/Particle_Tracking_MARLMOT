@@ -2,6 +2,7 @@
 Multi-Agent Reinforcement Learning for Multiple Object Tracking
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+A note from Fernanda Perrone:
 This script is a copy from the original repository from Isaac Berrios with additions from the ANP-Granular repository for Particle Tracking and from myself. To run this script, the inference file needs to have file paths changed. Once this is done, calling python inference.py will run it and it will ouput folders with images of the particle predictions for all colors for MARLMOT, SORT, and the ground truth. 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
