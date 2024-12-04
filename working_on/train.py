@@ -1,4 +1,3 @@
-
 """
     Main Training script for MARLMOT
 
@@ -10,9 +9,9 @@ import os
 import time
 import argparse
 from train_world import TrainWorld
-from dataloader import TrackDataloader
-from network import Net
-from ppo import PPO
+from dataloader_particles import TrackDataloader
+from network_particles import Net
+from ppo_particles import PPO
 
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -28,9 +27,9 @@ def get_args():
 
     # set default paths here
     parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/clean_code/MOT15/train") 
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/Particle_Tracking/csv_modified/gp3") 
     parser.add_argument("--savepath", dest="savepath", type=str,
-                        default=os.path.join(DIR_PATH, r"trained_models"))
+                        default=os.path.join(DIR_PATH, r"trained_models_particles"))
     args = parser.parse_args()
 
     return args
@@ -46,12 +45,12 @@ if __name__ == "__main__":
 
     # get dataloader
     dataloader = TrackDataloader(train_folder)
-
+    
     # initialize PPO class with desired hyperparameters
     ppo = PPO(dataloader, TrainWorld, Net, 
               epochs=15,       # total number of batch+training iterations
               num_train_iters=6, # number of iterations to update policy weights
-              lr=5e-5,           # learning rate for policy and critic weights
+              lr=5e-5,           # learning rate for policy and critic wieghts
               gamma=0.95,        # discount factor
               eps=0.2,           # clip factor (limits how size of policy update)
               iou_threshold=0.3, # iou threshold for tracker
