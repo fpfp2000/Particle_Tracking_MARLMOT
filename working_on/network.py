@@ -23,16 +23,10 @@ class Net(nn.Module):
 
     def forward(self, x):
 
-        # if torch.isnan(x).any() or torch.isinf(x).any():
-        #     nan_cols = torch.isnan(x).any(dim=0)
-        #     print(f"Columns with NaN values {nan_cols.nonzero()}")
-        #     raise ValueError("Invalid input: NaN or Inf values detected")
-        # print(f"Input chape to network is: {x.shape}")
         x = F.elu(self.fc1(x))  
         x = F.elu(self.fc2(x))
         x = F.elu(self.fc3(x))
         x = self.fc4(x)
 
-        # print(f"Logits: {x}")
         # return logits and compute softmax with loss function?
         return x
