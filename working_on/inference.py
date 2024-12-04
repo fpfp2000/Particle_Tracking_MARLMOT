@@ -92,13 +92,11 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
 
     tracker = HungarianTracker(iou_threshold=iou_threshold, 
                                    min_age=min_age)
-########################################################################################## MADE AN EDIT INSIDE FOR LOOP
+
     for idx in range(len(dataloader)):
         ground_truth, detections, gt_data, gt_tracks, frame_size = dataloader.__getitem__(idx, datafolder, color)
         
         # initialize world object to collect rollouts
-        # tracker = HungarianTracker(iou_threshold=iou_threshold, 
-        #                            min_age=min_age)
         world = TestWorld(tracker=tracker, 
                            ground_truth=ground_truth, 
                            detections=detections,
@@ -149,7 +147,6 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
         
         if world.frame - 1 == len(world.frame_paths) - 1:
             frame_idx = world.frame - 1
-            # last_frame_detections = np.empty((0,6))
 
             last_frame_detections = world.detections[world.detections.frame == (frame_idx + 500)]
             
@@ -169,7 +166,6 @@ def get_sort_rollout(dataloader, iou_threshold, min_age, frame_paths, datafolder
  
 def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT, datafolder, color):
     """ Special function to evaluate the results of SORT on a given dataset """
-    # print("Obtaining SORT batch rollouts...")
 
     # batch_len, \
     mota, frames, done = get_sort_rollout(dataloader, 
@@ -179,9 +175,6 @@ def eval_sort(dataloader, iou_threshold, min_age, frame_paths, savepath_SORT, da
                             datafolder,
                             color)
     
-    # display metrics
-    # print("batch length: ", batch_len)
-    # print("MOTA: ", mota)
     print(frames)
 
     # saving SORT frmes
@@ -325,7 +318,6 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
     while frame_count < len(frame_paths):
         
         frame_path = frame_paths[world.frame - 1]
-        # frame_path = frame_paths[frame_count]
 
         if len(observations) >= 0:
             obs_list = list(observations.values())
@@ -344,18 +336,11 @@ def load_marlmot_bboxes(frame_paths, frames_dir, ppo, world, device):
         frame = draw_tracks(cv2.cvtColor(cv2.imread(frame_path), 
                                             cv2.COLOR_BGR2RGB), 
                                             world.current_tracks)
-
-        # print(f"Frame {frame_count}: Bounding boxes generated - {len(world.current_tracks)}")
-
-        # if len(world.current_tracks) == 0:
-        #     print(f"Warning: No bounding boxes for MARLMOT Frame {frame_count}")
         
         # Save frames
         frame_filename = os.path.join(frames_dir, f"frame_{frame_count:04d}.png")
-        # frame_filename_2 = os.path.join(frames_dir_2, f"frame_{frame_count:04d}.png")
 
         cv2.imwrite(frame_filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        # cv2.imwrite(frame_filename_2, cv2.cvtColor(frame_with_gt, cv2.COLOR_RGB2BGR))
 
         frame_count += 1
 
