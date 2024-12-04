@@ -9,10 +9,10 @@ import torch
 import pandas as pd
 from test_world import TestWorld
 from train_world import TrainWorld
-from dataloader_particles import TrackDataloader
-from network_particles import Net
-from ppo_particles import PPO
-from track_utils_particles import *
+from dataloader import TrackDataloader
+from network import Net
+from ppo import PPO
+from track_utils import *
 
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
