@@ -27,7 +27,7 @@ def get_args():
 
     # set default paths here
     parser.add_argument("--policy", dest="policy", type=str,
-                        default=os.path.join(DIR_PATH, "trained_models/actor_1161.pth"))
+                        default=os.path.join(DIR_PATH, "trained_models/actor_1498.pth"))
     parser.add_argument("--datafolder", dest="datafolder", type=str, 
                         default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train")
     parser.add_argument("--mode", dest="mode", type=str, default="marlmot")
@@ -87,7 +87,8 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
     cost_penalties = 0
     total_num_tracks = 0
 
-    for (ground_truth, detections, frame_size) in dataloader:
+########################################################################################## MADE AN EDIT INSIDE FOR LOOP
+    for (ground_truth, detections, gt_data, gt_tracks, frame_size) in dataloader:
         
         # initialize world object to collect rollouts
         tracker = HungarianTracker(iou_threshold=iou_threshold, 
@@ -95,6 +96,7 @@ def get_sort_rollout(dataloader, iou_threshold, min_age):
         world = TrainWorld(tracker=tracker, 
                            ground_truth=ground_truth, 
                            detections=detections,
+                        #    gt_data=gt_data,
                            frame_size=frame_size)
 
         # initialize episode rewards list
@@ -162,6 +164,7 @@ def eval_sort(dataloader, iou_threshold, min_age):
                             min_age)
     
     # display metrics
+    
     print("batch length: ", batch_len)
     print("false positives: ", false_positives)
     print("false negatives: ", false_negatives)
