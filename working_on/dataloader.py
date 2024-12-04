@@ -86,10 +86,7 @@ class TrackDataloader():
         return detections
     
     def get_gt_data(self, datafolder, color):
-        """ Obtains ground truth Detections DataFrame from input train folder.
-            Ground Truth DataFrame contains all ground truth detection bounding boxes
-            and confidence score for every frame. Occluded objects are not included.
-            Inputs:
+        """ Inputs:
                 data_folder - train folder path
             Outputs:
                 detections - Ground Truth Tracks DataFrame 
@@ -103,9 +100,7 @@ class TrackDataloader():
 
         # scale confidence to 0-1
         gt_data.conf = 1
-        # (gt_data.conf - gt_data.conf.min()) \
-        #                   / (gt_data.conf.max() - gt_data.conf.min())
-
+      
         return gt_data
 
     @staticmethod
