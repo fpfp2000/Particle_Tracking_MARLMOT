@@ -1,3 +1,4 @@
+
 """
     Main Training script for MARLMOT
 
@@ -26,15 +27,8 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # set default paths here
-    # parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-    #                     default=r"C:\Users\itber\Documents\datasets\MOT15\train") 
-    # parser.add_argument("--savepath", dest="savepath", type=str,
-    #                     default=os.path.join(DIR_PATH, r"trained_models"))
-
-    # parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-    #                     default=r"/Users/fpfp2/Desktop/Masters Thesis/CV_tracking/MARLMOT/MOT15/train") 
     parser.add_argument("--trainfolder", dest="trainfolder", type=str,
-                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/working_on/MOT15/train") 
+                        default=r"/Users/fpfp2/Desktop/Masters Thesis/Particle_Tracking_MARLMOT/clean_code/MOT15/train") 
     parser.add_argument("--savepath", dest="savepath", type=str,
                         default=os.path.join(DIR_PATH, r"trained_models"))
     args = parser.parse_args()
@@ -55,9 +49,9 @@ if __name__ == "__main__":
 
     # initialize PPO class with desired hyperparameters
     ppo = PPO(dataloader, TrainWorld, Net, 
-              epochs=1,       # total number of batch+training iterations was 1500
+              epochs=15,       # total number of batch+training iterations
               num_train_iters=6, # number of iterations to update policy weights
-              lr=5e-5,           # learning rate for policy and critic wieghts
+              lr=5e-5,           # learning rate for policy and critic weights
               gamma=0.95,        # discount factor
               eps=0.2,           # clip factor (limits how size of policy update)
               iou_threshold=0.3, # iou threshold for tracker
