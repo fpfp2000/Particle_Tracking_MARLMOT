@@ -1,6 +1,11 @@
 # MARLMOT
 Multi-Agent Reinforcement Learning for Multiple Object Tracking
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+This script is a copy from the original repository from Isaac Berrios with additions from the ANP-Granular repository for Particle Tracking and from myself. To run this script, the inference file needs to have file paths changed. Once this is done, calling python inference.py will run it and it will ouput folders with images of the particle predictions for all colors for MARLMOT, SORT, and the ground truth. 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 This respository contains an implementation of [MARLMOT](https://ifaamas.org/Proceedings/aamas2018/pdfs/p1397.pdf) which is a multiple object tracking algorithm that extends [SORT](https://arxiv.org/pdf/1602.00763.pdf) by using multiple agents to manage each track. The agents decide how to update track filters and when to delete, keep, or mark as hidden. Each agent is parameterized as a Feed Forward Neural Network that observes continuous data from a track and outputs probabilities for 5 discrete actions that determine how each track is updated
 
 <p align="center">
