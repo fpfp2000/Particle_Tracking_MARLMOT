@@ -3,7 +3,7 @@ Multi-Agent Reinforcement Learning for Multiple Object Tracking
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 A note from Fernanda Perrone:
-This script is a copy from the original repository from Isaac Berrios (https://github.com/itberrios/CV_tracking.git) with additions from the ANP-Granular repository for Particle Tracking (https://github.com/ANP-Granular/ParticleTracking.git) and from myself. The scripts will be found in the working_on folder. To run this script, the inference file will need to have file paths changed to run on your machine. Once this is done, calling python inference.py will run it and it will ouput folders with images of the particle predictions for all colors for MARLMOT, SORT, and the ground truth. 
+This script is a copy from the original repository from Isaac Berrios (https://github.com/itberrios/CV_tracking.git) with additions from the ANP-Granular repository for Particle Tracking (https://github.com/ANP-Granular/ParticleTracking.git) and from myself. The scripts will be found in the working_on folder. Before running this script, please make sure you have torch, numpy, pandas, and opencv downloaded. To run this script the inference file will need to have file paths changed to run on your machine. Once this is done, calling python inference.py will run it and it will ouput folders with images of the particle predictions for all colors for MARLMOT, SORT, and the ground truth. 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
